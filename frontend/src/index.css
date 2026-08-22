@@ -1,0 +1,774 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ============================================================================
+ * InsightFlow — Premium 3D Design System
+ * ============================================================================
+ *
+ * Two ideas drive this system:
+ *
+ * 1. INSTITUTIONAL PALETTE. Neutrals do almost all the work: warm platinum in
+ *    light, deep graphite in dark. Three accents sit on top, each with one job,
+ *    so nothing reads as decorative:
+ *      - navy / steel blue  -> primary interactive (links, buttons, selection)
+ *      - muted emerald      -> positive movement and healthy state
+ *      - champagne gold     -> premium moments only (best model, top metric)
+ *    Status colours stay reserved for feedback so colour never stops meaning
+ *    something. No single hue dominates a screen; hierarchy comes from depth
+ *    and weight first, colour second.
+ *
+ * 2. REAL DEPTH. Surfaces are lit from above and physically stacked, not
+ *    outlined. Every raised element layers four things:
+ *      a. a top-to-bottom fill gradient   (the face catching light)
+ *      b. an inset 1px rim highlight      (the lit top lip)
+ *      c. an inset bottom shade           (material thickness)
+ *      d. a multi-stop ambient shadow     (contact + cast)
+ *
+ *    Light and dark invert which cue carries the weight: on pearl, the cast
+ *    shadow does the work; on obsidian, shadows are invisible, so the rim
+ *    highlight and a faint outer bloom carry the form instead.
+ *
+ * Values are space-separated RGB channels so Tailwind's `/ <alpha-value>`
+ * syntax works (e.g. bg-accent/10).
+ */
+
+:root {
+  /* --- Surfaces: warm platinum, never clinical white --------------------- */
+  --color-canvas: 242 242 240;
+  --color-surface: 252 252 251;
+  --color-surface-lift: 255 255 255;   /* top stop of the surface gradient  */
+  --color-elevated: 255 255 255;
+  --color-border: 223 224 222;         /* mist grey                         */
+  --color-border-strong: 196 199 199;
+
+  /* Graphite with a blue cast rather than pure black - reads as ink on paper
+     and keeps the neutrals from looking green next to the navy accent. */
+  --color-text: 23 28 37;
+  --color-text-muted: 84 92 105;
+  /* Held at 4.5:1 against BOTH surface and canvas, not just surface - subtle
+     carries hints and captions at 11-12px, and it sits on the canvas as often
+     as on a card. A lighter grey looked better and failed AA on half the page. */
+  --color-text-subtle: 102 110 124;
+
+  /* Deep navy. 9.8:1 on surface, so one token serves as both button fill and
+     link text without needing a darker variant for copy. */
+  --color-accent: 24 56 104;
+  --color-accent-hover: 17 42 80;
+  --color-accent-soft: 238 242 249;
+  --color-accent-contrast: 255 255 255;
+
+  /* Champagne gold. `luxe` is the AA-safe text/icon weight; `luxe-bright` is
+     decorative only (gradients, rims, glints) and must never carry copy.
+     A true champagne (198/166/92) only reaches ~2.2:1 on platinum, so the text
+     weight is pushed down to a bronze that clears 4.5:1 against both canvas
+     and surface - it still reads as gold next to `luxe-bright`. */
+  --color-luxe: 132 96 24;
+  --color-luxe-bright: 198 166 92;
+  --color-luxe-soft: 250 246 236;
+  /* Middle stop of the foil gradient. Separate from `luxe-bright` because the
+     highlight has to stay legible on platinum, where true champagne is ~2.2:1 -
+     unreadable even at display size. */
+  --color-luxe-sheen: 166 126 44;
+
+  /* Muted emerald - the second accent. Deep enough to carry text at 4.9:1,
+     which is what lets it label positive deltas and not just fill a chip. */
+  --color-success: 17 106 82;
+  --color-success-soft: 238 248 244;
+  --color-warning: 165 92 16;
+  --color-warning-soft: 253 248 236;
+  --color-danger: 176 36 44;
+  --color-danger-soft: 253 242 242;
+
+  /* --- Depth engine ------------------------------------------------------ */
+  --shadow-rgb: 20 28 42;
+  --rim: 255 255 255;                  /* lit top lip                        */
+  --rim-alpha: 0.95;
+  --rim-shade: 20 28 42;               /* under-lip shade = thickness        */
+  --rim-shade-alpha: 0.07;
+  --bloom-alpha: 0;                    /* outer glow; dark mode only         */
+
+  /* A five-stop ladder rather than one blurred blob: doubling offset and blur
+     at each stop is what makes a cast shadow read as distance instead of a
+     grey halo. */
+  --depth-1:
+    0 1px 1px -0.5px rgb(var(--shadow-rgb) / 0.06),
+    0 2px 3px -1px rgb(var(--shadow-rgb) / 0.05);
+  --depth-2:
+    0 1px 1px -0.5px rgb(var(--shadow-rgb) / 0.05),
+    0 3px 5px -1.5px rgb(var(--shadow-rgb) / 0.06),
+    0 7px 14px -3px rgb(var(--shadow-rgb) / 0.05);
+  --depth-3:
+    0 1px 2px -0.5px rgb(var(--shadow-rgb) / 0.05),
+    0 4px 8px -2px rgb(var(--shadow-rgb) / 0.06),
+    0 12px 24px -6px rgb(var(--shadow-rgb) / 0.07),
+    0 24px 40px -12px rgb(var(--shadow-rgb) / 0.05);
+  --depth-4:
+    0 2px 4px -1px rgb(var(--shadow-rgb) / 0.05),
+    0 8px 16px -4px rgb(var(--shadow-rgb) / 0.07),
+    0 20px 36px -10px rgb(var(--shadow-rgb) / 0.08),
+    0 40px 72px -20px rgb(var(--shadow-rgb) / 0.07);
+
+  /* --- Charts: muted institutional tones, ordered for adjacent contrast ---
+     Steel and emerald lead because they carry the two series a business chart
+     most often shows (actual vs. target). Every entry clears 3:1 on surface so
+     a thin 2px line still reads. */
+  --chart-1: 31 78 140;                /* steel blue                        */
+  --chart-2: 17 106 82;                /* emerald                           */
+  --chart-3: 166 126 44;               /* bronze                            */
+  --chart-4: 122 71 138;               /* plum                              */
+  --chart-5: 14 116 144;               /* deep cyan                         */
+  --chart-6: 158 74 58;                /* terracotta                        */
+  --chart-grid: 226 227 225;
+  --chart-axis: 143 149 156;
+
+  /* --- Glass ------------------------------------------------------------- */
+  --glass-tint: 255 255 255;
+  --glass-tint-alpha: 0.6;
+  --glass-tint-strong-alpha: 0.78;
+  --glass-tint-subtle-alpha: 0.42;
+  --glass-blur: 22px;
+  --glass-saturate: 165%;
+
+  /* --- Ambient mesh: navy / steel / emerald / gold ----------------------- */
+  --mesh-1: 30 64 118;
+  --mesh-2: 17 106 82;
+  --mesh-3: 198 166 92;
+  --mesh-4: 62 108 158;
+  --mesh-alpha: 0.1;
+}
+
+[data-theme="dark"] {
+  /* Deep graphite with a blue cast; pure #000 kills every depth cue. The
+     surface ladder stays tight (18 -> 26 -> 30) because on dark, large jumps
+     in panel lightness read as mismatched greys rather than as stacking. */
+  --color-canvas: 11 13 17;
+  --color-surface: 21 24 31;
+  --color-surface-lift: 30 34 43;
+  --color-elevated: 33 37 47;
+  --color-border: 46 51 62;
+  --color-border-strong: 70 77 92;
+
+  /* Platinum, not white - full white on graphite vibrates at body size. */
+  --color-text: 233 236 241;
+  --color-text-muted: 160 168 181;
+  --color-text-subtle: 133 141 155;
+
+  /* Steel blue. The light-mode navy would disappear here, so the accent
+     lightens rather than shifting hue - it stays recognisably the same colour
+     across themes. */
+  --color-accent: 126 168 219;
+  --color-accent-hover: 158 191 232;
+  --color-accent-soft: 25 39 60;
+  --color-accent-contrast: 10 17 28;
+
+  --color-luxe: 214 184 120;
+  --color-luxe-bright: 232 205 150;
+  --color-luxe-soft: 44 37 22;
+  /* On graphite the highlight can go full champagne - contrast is not the
+     binding constraint here, so the foil reads as actual metal. */
+  --color-luxe-sheen: 244 225 182;
+
+  --color-success: 62 190 150;
+  --color-success-soft: 14 40 33;
+  --color-warning: 224 168 74;
+  --color-warning-soft: 43 33 15;
+  --color-danger: 232 110 110;
+  --color-danger-soft: 46 21 23;
+
+  /* On obsidian a cast shadow is invisible, so form comes from the rim
+     highlight and a faint coloured bloom instead. Shadows stay in the ladder
+     only to seat elements against the canvas. */
+  --shadow-rgb: 0 0 0;
+  --rim: 255 255 255;
+  --rim-alpha: 0.09;
+  --rim-shade: 0 0 0;
+  --rim-shade-alpha: 0.5;
+  --bloom-alpha: 0.05;
+
+  --depth-1:
+    0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 0 0 1px rgb(255 255 255 / 0.02);
+  --depth-2:
+    0 2px 4px -1px rgb(0 0 0 / 0.45),
+    0 6px 14px -3px rgb(0 0 0 / 0.4),
+    0 0 0 1px rgb(255 255 255 / 0.025);
+  --depth-3:
+    0 4px 8px -2px rgb(0 0 0 / 0.45),
+    0 12px 26px -6px rgb(0 0 0 / 0.5),
+    0 24px 44px -12px rgb(0 0 0 / 0.4),
+    0 0 0 1px rgb(255 255 255 / 0.03);
+  --depth-4:
+    0 8px 16px -4px rgb(0 0 0 / 0.5),
+    0 20px 40px -10px rgb(0 0 0 / 0.55),
+    0 40px 80px -20px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(255 255 255 / 0.035);
+
+  /* Same six hues as light, lifted into the range that reads on graphite.
+     Keeping the order identical means a chart doesn't reassign series colours
+     when the theme flips. */
+  --chart-1: 126 168 219;              /* steel blue                        */
+  --chart-2: 62 190 150;               /* emerald                           */
+  --chart-3: 214 184 120;              /* champagne                         */
+  --chart-4: 178 138 200;              /* plum                              */
+  --chart-5: 86 180 205;               /* cyan                              */
+  --chart-6: 214 130 108;              /* terracotta                        */
+  --chart-grid: 44 49 60;
+  --chart-axis: 112 120 134;
+
+  --glass-tint: 32 37 47;
+  --glass-tint-alpha: 0.66;
+  --glass-tint-strong-alpha: 0.85;
+  --glass-tint-subtle-alpha: 0.38;
+  --glass-blur: 24px;
+  --glass-saturate: 145%;
+
+  --mesh-1: 58 106 172;
+  --mesh-2: 26 140 110;
+  --mesh-3: 198 166 92;
+  --mesh-4: 96 148 200;
+  --mesh-alpha: 0.16;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-canvas text-ink font-sans antialiased;
+  font-size: 0.875rem;
+  /* A faint ambient wash keeps large flat areas from banding and gives raised
+     surfaces something to sit against. Fixed so it doesn't scroll away. */
+  background-image:
+    radial-gradient(60% 50% at 12% 0%, rgb(var(--mesh-1) / 0.06), transparent 65%),
+    radial-gradient(50% 45% at 92% 8%, rgb(var(--mesh-3) / 0.05), transparent 68%);
+  background-attachment: fixed;
+}
+
+:focus-visible {
+  @apply outline-none ring-2 ring-accent/60 ring-offset-2;
+  ring-offset-color: rgb(var(--color-canvas));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Appearance preferences
+   ----------------------------------------------------------------------------
+   The Settings page writes these attributes onto <html>. They are real
+   controls, not labels: each one removes work the browser would otherwise do,
+   which is the point on a dense dashboard running on integrated graphics.
+
+   The OS-level `prefers-reduced-motion` above still wins regardless of what is
+   selected here - a stated accessibility need is not something an in-app
+   preference should be able to override.
+   ========================================================================== */
+
+/* --- 3D visual quality --------------------------------------------------- */
+
+/* Balanced: keep depth and lift, drop the expensive compositing (backdrop
+   blur is the single costliest effect in this UI). */
+[data-depth="balanced"] .glass,
+[data-depth="balanced"] .glass-chip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(var(--color-surface) / 0.92);
+}
+[data-depth="balanced"] .grain::after,
+[data-depth="balanced"] .glass-glow::before {
+  display: none;
+}
+
+/* Flat: no perspective, no bloom, no gradient faces. Borders carry structure
+   instead of shadows. */
+[data-depth="flat"] .glass,
+[data-depth="flat"] .glass-chip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(var(--color-surface));
+}
+[data-depth="flat"] .surface-3d,
+[data-depth="flat"] .card,
+[data-depth="flat"] .glass,
+[data-depth="flat"] .btn-surface {
+  background-image: none;
+  background-color: rgb(var(--color-surface));
+  box-shadow: none;
+  border-color: rgb(var(--color-border-strong));
+}
+[data-depth="flat"] .btn-raised {
+  background-image: none;
+  background-color: rgb(var(--color-accent));
+  box-shadow: none;
+}
+[data-depth="flat"] .tilt-3d {
+  transform: none !important;
+}
+[data-depth="flat"] .card-interactive:hover,
+[data-depth="flat"] .glass-hover:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgb(var(--color-accent));
+}
+[data-depth="flat"] .grain::after,
+[data-depth="flat"] .glass-glow::before,
+[data-depth="flat"] .sheen::after {
+  display: none;
+}
+[data-depth="flat"] .mesh-bg {
+  background-image: none;
+}
+
+/* --- Animation intensity ------------------------------------------------- */
+
+/* Subtle: keep transitions, halve their distance and duration. */
+[data-motion="subtle"] .card-interactive:hover {
+  transform: translateY(-1px);
+}
+[data-motion="subtle"] .glass-hover:hover {
+  transform: translateY(-2px);
+}
+[data-motion="subtle"] .sheen::after {
+  display: none;
+}
+[data-motion="subtle"] *,
+[data-motion="subtle"] *::before,
+[data-motion="subtle"] *::after {
+  animation-duration: 160ms !important;
+  transition-duration: 120ms !important;
+}
+
+/* Off: motion removed entirely, matching the reduced-motion treatment. */
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+[data-motion="off"] .card-interactive:hover,
+[data-motion="off"] .glass-hover:hover,
+[data-motion="off"] .tilt-3d {
+  transform: none !important;
+}
+[data-motion="off"] .sheen::after {
+  display: none;
+}
+
+/* --- Dashboard density --------------------------------------------------- */
+
+/* Compact trades whitespace for rows on screen. Driven by the root font size
+   so it scales padding, gaps and type together rather than needing a compact
+   variant on every component. */
+[data-density="compact"] body {
+  font-size: 0.8125rem;
+}
+[data-density="compact"] .card > * + * {
+  margin-top: 0;
+}
+[data-density="spacious"] body {
+  font-size: 0.9375rem;
+}
+
+@layer components {
+  .skip-link {
+    @apply absolute left-4 z-50 -translate-y-16 rounded-lg bg-accent px-4 py-2
+           text-accent-contrast shadow-depth-3 transition-transform focus:translate-y-4;
+  }
+
+  /* ======================================================================
+     Raised surface — the core 3D primitive
+     ----------------------------------------------------------------------
+     Every card, panel and tile in the product is this. The fill gradient runs
+     light-to-base top-to-bottom so the face reads as angled toward a light
+     source above; the inset rim pair supplies the lip and the thickness.
+     ====================================================================== */
+  .surface-3d {
+    position: relative;
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--color-surface-lift)) 0%,
+      rgb(var(--color-surface)) 62%
+    );
+    border: 1px solid rgb(var(--color-border));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      inset 0 -1px 0 0 rgb(var(--rim-shade) / var(--rim-shade-alpha)),
+      var(--depth-2);
+  }
+
+  .card {
+    @apply rounded-xl surface-3d;
+  }
+
+  /* Cards that respond to the pointer. Lift is small on purpose - a big jump
+     reads as a toy; 3px plus a deeper shadow reads as weight. */
+  .card-interactive {
+    transition:
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.32s ease;
+  }
+  .card-interactive:hover {
+    transform: translateY(-3px);
+    border-color: rgb(var(--color-border-strong));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      inset 0 -1px 0 0 rgb(var(--rim-shade) / var(--rim-shade-alpha)),
+      0 0 32px -8px rgb(var(--mesh-1) / var(--bloom-alpha)),
+      var(--depth-4);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-interactive:hover {
+      transform: none;
+    }
+  }
+
+  /* Recessed well — inputs, progress tracks, code blocks. The inverse of
+     surface-3d: shade at the top, highlight at the bottom. */
+  .surface-inset {
+    background-color: rgb(var(--color-canvas));
+    border: 1px solid rgb(var(--color-border));
+    box-shadow:
+      inset 0 2px 4px -1px rgb(var(--shadow-rgb) / 0.09),
+      inset 0 1px 2px 0 rgb(var(--shadow-rgb) / 0.06),
+      0 1px 0 0 rgb(var(--rim) / calc(var(--rim-alpha) * 0.55));
+  }
+
+  .input-base {
+    @apply w-full rounded-lg surface-inset px-3 py-2 text-base text-ink
+           placeholder:text-subtle transition-[border-color,box-shadow]
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25
+           disabled:cursor-not-allowed disabled:text-subtle disabled:opacity-60;
+  }
+
+  /* ======================================================================
+     Buttons with physical press
+     ====================================================================== */
+  .btn-3d {
+    position: relative;
+    transition:
+      transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.18s ease,
+      background-color 0.18s ease,
+      filter 0.18s ease;
+  }
+  .btn-3d:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  /* Primary: a lit violet face over its own cast shadow. */
+  .btn-raised {
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--color-accent-hover)) 0%,
+      rgb(var(--color-accent)) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.22),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.16),
+      var(--depth-2);
+  }
+  .btn-raised:hover:not(:disabled) {
+    filter: brightness(1.09);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.26),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.16),
+      0 0 26px -6px rgb(var(--color-accent) / 0.55),
+      var(--depth-3);
+  }
+  .btn-raised:active:not(:disabled) {
+    box-shadow:
+      inset 0 2px 4px 0 rgb(0 0 0 / 0.22),
+      var(--depth-1);
+  }
+
+  /* Secondary: same extrusion, neutral face. */
+  .btn-surface {
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--color-surface-lift)) 0%,
+      rgb(var(--color-surface)) 100%
+    );
+    border: 1px solid rgb(var(--color-border));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      inset 0 -1px 0 0 rgb(var(--rim-shade) / var(--rim-shade-alpha)),
+      var(--depth-1);
+  }
+  .btn-surface:hover:not(:disabled) {
+    border-color: rgb(var(--color-border-strong));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      inset 0 -1px 0 0 rgb(var(--rim-shade) / var(--rim-shade-alpha)),
+      var(--depth-2);
+  }
+  .btn-surface:active:not(:disabled) {
+    box-shadow: inset 0 2px 4px 0 rgb(var(--shadow-rgb) / 0.12);
+  }
+
+  /* Danger, matching the primary treatment. */
+  .btn-danger-raised {
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--color-danger)) 0%,
+      rgb(var(--color-danger) / 0.86) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.2),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.16),
+      var(--depth-2);
+  }
+  .btn-danger-raised:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.24),
+      0 0 26px -6px rgb(var(--color-danger) / 0.5),
+      var(--depth-3);
+  }
+
+  /* ======================================================================
+     Luxe accents — the champagne layer
+     ====================================================================== */
+
+  /* Hairline gold rim. Uses a padding-box/border-box double background so the
+     gradient lives in the border only, with no pseudo-element needed. */
+  .luxe-rim {
+    border: 1px solid transparent;
+    background-image:
+      linear-gradient(180deg, rgb(var(--color-surface-lift)), rgb(var(--color-surface))),
+      linear-gradient(
+        140deg,
+        rgb(var(--color-luxe-bright) / 0.85),
+        rgb(var(--color-luxe-bright) / 0.15) 45%,
+        rgb(var(--color-luxe-bright) / 0.75)
+      );
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / calc(var(--rim-alpha) * 0.8)),
+      0 0 28px -10px rgb(var(--color-luxe-bright) / 0.45),
+      var(--depth-2);
+  }
+
+  /* ======================================================================
+     Glass — marketing surfaces
+     ====================================================================== */
+  .glass {
+    position: relative;
+    background-color: rgb(var(--glass-tint) / var(--glass-tint-alpha));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid rgb(var(--color-border) / 0.7);
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      inset 0 -1px 0 0 rgb(var(--rim-shade) / var(--rim-shade-alpha)),
+      var(--depth-3);
+  }
+  .glass-strong {
+    background-color: rgb(var(--glass-tint) / var(--glass-tint-strong-alpha));
+  }
+  .glass-subtle {
+    background-color: rgb(var(--glass-tint) / var(--glass-tint-subtle-alpha));
+  }
+  .glass-chip {
+    background-color: rgb(var(--glass-tint) / var(--glass-tint-subtle-alpha));
+    -webkit-backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    border: 1px solid rgb(var(--color-border) / 0.6);
+    box-shadow: inset 0 1px 0 0 rgb(var(--rim) / calc(var(--rim-alpha) * 0.7));
+  }
+
+  .glass-hover {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.35s ease;
+  }
+  .glass-hover:hover {
+    transform: translateY(-4px);
+    background-color: rgb(var(--glass-tint) / var(--glass-tint-strong-alpha));
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--rim) / var(--rim-alpha)),
+      0 0 40px -12px rgb(var(--mesh-1) / 0.4),
+      var(--depth-4);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .glass-hover:hover {
+      transform: none;
+    }
+  }
+
+  .glass-glow::before {
+    content: "";
+    position: absolute;
+    inset: -30% -10% auto -10%;
+    height: 70%;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(60% 100% at 50% 0%, rgb(var(--mesh-1) / 0.35), transparent 70%);
+    filter: blur(44px);
+  }
+
+  /* A single sweep of light across a surface on hover. */
+  .sheen {
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 32%,
+      rgb(255 255 255 / 0.16) 46%,
+      transparent 62%
+    );
+    transform: translateX(-120%);
+    transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .sheen:hover::after {
+    transform: translateX(120%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheen::after {
+      display: none;
+    }
+  }
+
+  .numeric {
+    @apply text-right font-mono tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Pointer-driven tilt. Components set --rx/--ry from mouse position; the
+     defaults keep the element flat when nothing is driving it.
+
+     The perspective is baked into the transform rather than set on a parent:
+     without it, rotateX/rotateY produce a flat shear instead of rotation, and
+     requiring a wrapper element to opt in is a trap every caller would hit. */
+  .tilt-3d {
+    --rx: 0deg;
+    --ry: 0deg;
+    transform: perspective(1200px) rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style: preserve-3d;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tilt-3d {
+      transform: none;
+    }
+  }
+
+  /* --- Depth ladder as utilities ---------------------------------------- */
+  .shadow-depth-1 { box-shadow: var(--depth-1); }
+  .shadow-depth-2 { box-shadow: var(--depth-2); }
+  .shadow-depth-3 { box-shadow: var(--depth-3); }
+  .shadow-depth-4 { box-shadow: var(--depth-4); }
+
+  /* Coloured bloom under an element - reads as emitted light, not a shadow. */
+  .glow-accent { box-shadow: 0 0 40px -10px rgb(var(--color-accent) / 0.5), var(--depth-3); }
+  .glow-luxe { box-shadow: 0 0 40px -10px rgb(var(--color-luxe-bright) / 0.5), var(--depth-3); }
+
+  /* --- Backdrops --------------------------------------------------------- */
+  .mesh-bg {
+    background-image:
+      radial-gradient(48% 45% at 16% 10%, rgb(var(--mesh-1) / var(--mesh-alpha)), transparent 62%),
+      radial-gradient(40% 38% at 86% 18%, rgb(var(--mesh-3) / var(--mesh-alpha)), transparent 64%),
+      radial-gradient(45% 42% at 74% 84%, rgb(var(--mesh-2) / var(--mesh-alpha)), transparent 62%),
+      radial-gradient(38% 36% at 20% 78%, rgb(var(--mesh-4) / var(--mesh-alpha)), transparent 64%);
+  }
+
+  /* Fine grain as an inline SVG - no asset fetch. Breaks the banding that
+     large soft gradients produce on 8-bit displays. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* --- Text treatments --------------------------------------------------- */
+  .text-gradient {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--color-accent)),
+      rgb(var(--mesh-3)),
+      rgb(var(--mesh-4))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Champagne foil. Decorative headline use only - never body copy. */
+  .text-luxe {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--color-luxe)),
+      rgb(var(--color-luxe-sheen)) 45%,
+      rgb(var(--color-luxe)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .rule-fade {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--color-border-strong) / 0.9),
+      transparent
+    );
+  }
+
+  .rule-luxe {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--color-luxe-bright) / 0.55),
+      transparent
+    );
+  }
+}
+
+/* Scrollbars matched to the surface rather than the OS default. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border-strong));
+  border-radius: 9999px;
+  border: 2px solid rgb(var(--color-canvas));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-text-subtle));
+}
