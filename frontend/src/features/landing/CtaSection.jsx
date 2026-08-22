@@ -11,7 +11,7 @@ import { ArrowRight, Github } from "lucide-react";
 import { Aurora, CountUp, Reveal } from "../../components/scroll/index.jsx";
 
 const STATS = [
-  { value: 105, suffix: "", label: "Backend tests" },
+  { value: 106, suffix: "", label: "Backend tests" },
   { value: 12, suffix: "", label: "Candidate models" },
   { value: 4, suffix: "", label: "File formats" },
   { value: 100, suffix: "%", label: "Ownership-checked routes" },
@@ -112,7 +112,7 @@ export default function CtaSection() {
 
             <div className="flex flex-col gap-2 text-xs text-muted">
               <a
-                href="https://github.com"
+                href="https://github.com/jenil38/insightflow"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
