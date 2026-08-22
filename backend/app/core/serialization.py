@@ -12,6 +12,7 @@ Rules:
 - Timestamps / dates        -> ISO 8601 strings
 - Anything unrecognised     -> str(value), so we degrade rather than 500
 """
+
 from __future__ import annotations
 
 import datetime as _dt

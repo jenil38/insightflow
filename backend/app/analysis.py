@@ -5,6 +5,7 @@ The heavy lifting moved to services/profiling_service.py. `guess_target_column`
 and `profile_dataframe` are re-exported here because chat.py, dashboard.py,
 ml.py and explain.py historically imported them from this module.
 """
+
 from fastapi import APIRouter, Depends
 
 from . import models
@@ -47,4 +48,7 @@ def quality_report(dataset: models.Dataset = Depends(get_owned_dataset)):
 def target_candidates(dataset: models.Dataset = Depends(get_owned_dataset)):
     """Ranked prediction targets, each with a stated reason and confidence."""
     loaded = load_dataset(dataset, max_rows=settings.PROFILE_SAMPLE_ROWS)
-    return {"candidates": recommend_targets(loaded.df, limit=8), "data_source": loaded.source}
+    return {
+        "candidates": recommend_targets(loaded.df, limit=8),
+        "data_source": loaded.source,
+    }

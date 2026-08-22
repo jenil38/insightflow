@@ -7,6 +7,7 @@ via `CleaningConfig`, the same code path can run in "preview" mode (compute the
 effects, write nothing), and applying cleaning never touches the original
 upload - it writes a separate file that can be discarded to revert.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -47,17 +48,23 @@ class CleaningService:
         config.parse_dates = bool(date_like)
         if date_like:
             preview = ", ".join(str(c) for c in date_like[:3])
-            reasons.append(f"{len(date_like)} text column(s) look like dates: {preview}.")
+            reasons.append(
+                f"{len(date_like)} text column(s) look like dates: {preview}."
+            )
 
         numeric_missing = int(df.select_dtypes(include=[np.number]).isna().sum().sum())
         config.numeric_missing_strategy = "median" if numeric_missing else "leave"
         if numeric_missing:
-            reasons.append(f"{numeric_missing} missing numeric value(s); median imputation suggested.")
+            reasons.append(
+                f"{numeric_missing} missing numeric value(s); median imputation suggested."
+            )
 
         cat_missing = int(sum(int(df[c].isna().sum()) for c in text_cols))
         config.categorical_missing_strategy = "mode" if cat_missing else "leave"
         if cat_missing:
-            reasons.append(f"{cat_missing} missing text value(s); most-frequent imputation suggested.")
+            reasons.append(
+                f"{cat_missing} missing text value(s); most-frequent imputation suggested."
+            )
 
         # Case standardisation is never auto-suggested: it is lossy, so the user
         # should opt in knowingly.
@@ -66,7 +73,8 @@ class CleaningService:
 
         return {
             "recommended_config": config.model_dump(),
-            "reasons": reasons or ["No cleaning issues detected - this dataset already looks tidy."],
+            "reasons": reasons
+            or ["No cleaning issues detected - this dataset already looks tidy."],
         }
 
     # -------------------------------------------------------------- execute
@@ -89,34 +97,48 @@ class CleaningService:
             before = len(work)
             work = work.drop_duplicates().reset_index(drop=True)
             removed = before - len(work)
-            steps.append(self._step(
-                "Remove duplicate rows", rows=removed,
-                detail=f"Dropped {removed} exact duplicate row(s).",
-            ))
+            steps.append(
+                self._step(
+                    "Remove duplicate rows",
+                    rows=removed,
+                    detail=f"Dropped {removed} exact duplicate row(s).",
+                )
+            )
 
         text_cols = [c for c in work.columns if pd.api.types.is_object_dtype(work[c])]
         date_cols = (
             [c for c in text_cols if infer_semantic_type(work[c]) == "datetime"]
-            if config.parse_dates else []
+            if config.parse_dates
+            else []
         )
         pure_text_cols = [c for c in text_cols if c not in date_cols]
 
         # --- whitespace -------------------------------------------------
         if config.trim_whitespace and pure_text_cols:
-            changed, touched = self._transform_text(work, pure_text_cols, lambda s: s.str.strip())
-            steps.append(self._step(
-                "Trim whitespace", values=changed, columns=touched,
-                detail=f"Trimmed {changed} value(s) across {len(touched)} column(s).",
-            ))
+            changed, touched = self._transform_text(
+                work, pure_text_cols, lambda s: s.str.strip()
+            )
+            steps.append(
+                self._step(
+                    "Trim whitespace",
+                    values=changed,
+                    columns=touched,
+                    detail=f"Trimmed {changed} value(s) across {len(touched)} column(s).",
+                )
+            )
 
         if config.normalize_whitespace and pure_text_cols:
             changed, touched = self._transform_text(
                 work, pure_text_cols, lambda s: s.str.replace(r"\s+", " ", regex=True)
             )
-            steps.append(self._step(
-                "Collapse repeated whitespace", values=changed, columns=touched,
-                detail=f"Normalised spacing in {changed} value(s).",
-            ))
+            steps.append(
+                self._step(
+                    "Collapse repeated whitespace",
+                    values=changed,
+                    columns=touched,
+                    detail=f"Normalised spacing in {changed} value(s).",
+                )
+            )
 
         # --- case (explicit opt-in only) --------------------------------
         if config.standardize_case != "none" and pure_text_cols:
@@ -126,13 +148,17 @@ class CleaningService:
                 "title": lambda s: s.str.title(),
             }[config.standardize_case]
             changed, touched = self._transform_text(work, pure_text_cols, transform)
-            steps.append(self._step(
-                f"Standardise text case ({config.standardize_case})", values=changed, columns=touched,
-                detail=(
-                    f"Rewrote {changed} value(s) to {config.standardize_case}case. This is lossy - "
-                    "the original capitalisation is only recoverable by reverting to the original data."
-                ),
-            ))
+            steps.append(
+                self._step(
+                    f"Standardise text case ({config.standardize_case})",
+                    values=changed,
+                    columns=touched,
+                    detail=(
+                        f"Rewrote {changed} value(s) to {config.standardize_case}case. This is lossy - "
+                        "the original capitalisation is only recoverable by reverting to the original data."
+                    ),
+                )
+            )
 
         # --- dates ------------------------------------------------------
         if date_cols:
@@ -146,14 +172,21 @@ class CleaningService:
                 work[col] = formatted.where(parsed.notna(), np.nan)
                 parsed_total += after_valid
                 failed_total += max(0, before_valid - after_valid)
-            steps.append(self._step(
-                "Parse date columns", values=parsed_total,
-                columns=[str(c) for c in date_cols],
-                detail=(
-                    f"Parsed {parsed_total} value(s) to YYYY-MM-DD across {len(date_cols)} column(s)."
-                    + (f" {failed_total} value(s) could not be parsed and became empty." if failed_total else "")
-                ),
-            ))
+            steps.append(
+                self._step(
+                    "Parse date columns",
+                    values=parsed_total,
+                    columns=[str(c) for c in date_cols],
+                    detail=(
+                        f"Parsed {parsed_total} value(s) to YYYY-MM-DD across {len(date_cols)} column(s)."
+                        + (
+                            f" {failed_total} value(s) could not be parsed and became empty."
+                            if failed_total
+                            else ""
+                        )
+                    ),
+                )
+            )
 
         # --- numeric missing --------------------------------------------
         numeric_cols = work.select_dtypes(include=[np.number]).columns.tolist()
@@ -163,15 +196,19 @@ class CleaningService:
             )
             if rows_to_drop:
                 work = work.dropna(subset=numeric_cols).reset_index(drop=True)
-            steps.append(self._step(
-                f"Handle missing numeric values ({config.numeric_missing_strategy})",
-                rows=rows_to_drop, values=filled, columns=touched,
-                detail=(
-                    f"Dropped {rows_to_drop} row(s) with missing numeric values."
-                    if config.numeric_missing_strategy == "drop"
-                    else f"Filled {filled} missing value(s) across {len(touched)} column(s)."
-                ),
-            ))
+            steps.append(
+                self._step(
+                    f"Handle missing numeric values ({config.numeric_missing_strategy})",
+                    rows=rows_to_drop,
+                    values=filled,
+                    columns=touched,
+                    detail=(
+                        f"Dropped {rows_to_drop} row(s) with missing numeric values."
+                        if config.numeric_missing_strategy == "drop"
+                        else f"Filled {filled} missing value(s) across {len(touched)} column(s)."
+                    ),
+                )
+            )
 
         # --- categorical missing ----------------------------------------
         cat_cols = [c for c in work.columns if pd.api.types.is_object_dtype(work[c])]
@@ -181,15 +218,19 @@ class CleaningService:
             )
             if rows_to_drop:
                 work = work.dropna(subset=cat_cols).reset_index(drop=True)
-            steps.append(self._step(
-                f"Handle missing text values ({config.categorical_missing_strategy})",
-                rows=rows_to_drop, values=filled, columns=touched,
-                detail=(
-                    f"Dropped {rows_to_drop} row(s) with missing text values."
-                    if config.categorical_missing_strategy == "drop"
-                    else f"Filled {filled} missing value(s) across {len(touched)} column(s)."
-                ),
-            ))
+            steps.append(
+                self._step(
+                    f"Handle missing text values ({config.categorical_missing_strategy})",
+                    rows=rows_to_drop,
+                    values=filled,
+                    columns=touched,
+                    detail=(
+                        f"Dropped {rows_to_drop} row(s) with missing text values."
+                        if config.categorical_missing_strategy == "drop"
+                        else f"Filled {filled} missing value(s) across {len(touched)} column(s)."
+                    ),
+                )
+            )
 
         # --- outliers ---------------------------------------------------
         outlier_step = self._handle_outliers(work, config.outlier_strategy)
@@ -202,18 +243,24 @@ class CleaningService:
             empty = [str(c) for c in work.columns if work[c].isna().all()]
             if empty:
                 work = work.drop(columns=empty)
-            steps.append(self._step(
-                "Drop fully empty columns", columns=empty,
-                detail=f"Dropped {len(empty)} column(s) containing no values.",
-            ))
+            steps.append(
+                self._step(
+                    "Drop fully empty columns",
+                    columns=empty,
+                    detail=f"Dropped {len(empty)} column(s) containing no values.",
+                )
+            )
 
         # A report full of "0 rows / 0 values affected" lines is noise, not
         # information, so only steps that actually did something are reported.
         # `always_report` steps are informational by design and always kept.
         always_report = ("Detect outliers",)
         steps = [
-            s for s in steps
-            if s["rows_affected"] or s["values_affected"] or s["columns_affected"]
+            s
+            for s in steps
+            if s["rows_affected"]
+            or s["values_affected"]
+            or s["columns_affected"]
             or s["step"].startswith(always_report)
         ]
 
@@ -221,12 +268,16 @@ class CleaningService:
         report = {
             "steps": steps,
             "before": {
-                "rows": int(original_rows), "columns": int(original_cols),
-                "missing_values": original_missing, "duplicate_rows": original_duplicates,
+                "rows": int(original_rows),
+                "columns": int(original_cols),
+                "missing_values": original_missing,
+                "duplicate_rows": original_duplicates,
             },
             "after": {
-                "rows": int(work.shape[0]), "columns": int(work.shape[1]),
-                "missing_values": final_missing, "duplicate_rows": int(work.duplicated().sum()),
+                "rows": int(work.shape[0]),
+                "columns": int(work.shape[1]),
+                "missing_values": final_missing,
+                "duplicate_rows": int(work.duplicated().sum()),
             },
             "rows_removed": int(original_rows - work.shape[0]),
             "columns_removed": int(original_cols - work.shape[1]),
@@ -234,9 +285,13 @@ class CleaningService:
             "config_used": config.model_dump(),
             # Legacy keys: the original /clean response shape, so any existing
             # consumer of that endpoint keeps working.
-            "duplicates_removed": self._step_value(steps, "Remove duplicate", "rows_affected"),
+            "duplicates_removed": self._step_value(
+                steps, "Remove duplicate", "rows_affected"
+            ),
             "dates_corrected": self._step_value(steps, "Parse date", "values_affected"),
-            "categories_standardized": self._step_value(steps, "Standardise", "values_affected"),
+            "categories_standardized": self._step_value(
+                steps, "Standardise", "values_affected"
+            ),
             "text_columns_normalized": len(pure_text_cols),
             "rows_after_cleaning": int(work.shape[0]),
             "columns_after_cleaning": int(work.shape[1]),
@@ -262,11 +317,19 @@ class CleaningService:
     # ------------------------------------------------------------- helpers
     @staticmethod
     def _step(
-        name: str, rows: int = 0, values: int = 0, columns: list[str] | None = None, detail: str = ""
+        name: str,
+        rows: int = 0,
+        values: int = 0,
+        columns: list[str] | None = None,
+        detail: str = "",
     ) -> dict[str, Any]:
         return {
-            "step": name, "applied": True, "rows_affected": int(rows),
-            "values_affected": int(values), "columns_affected": columns or [], "detail": detail,
+            "step": name,
+            "applied": True,
+            "rows_affected": int(rows),
+            "values_affected": int(values),
+            "columns_affected": columns or [],
+            "detail": detail,
         }
 
     @staticmethod
@@ -274,7 +337,9 @@ class CleaningService:
         return next((s[key] for s in steps if s["step"].startswith(prefix)), 0)
 
     @staticmethod
-    def _transform_text(df: pd.DataFrame, columns: list, transform) -> tuple[int, list[str]]:
+    def _transform_text(
+        df: pd.DataFrame, columns: list, transform
+    ) -> tuple[int, list[str]]:
         """Apply a string transform in place; returns (values_changed, columns_touched)."""
         changed_total = 0
         touched: list[str] = []
@@ -357,7 +422,8 @@ class CleaningService:
         if strategy == "report" or not bounds:
             return {
                 **CleaningService._step(
-                    "Detect outliers (report only)", columns=affected,
+                    "Detect outliers (report only)",
+                    columns=affected,
                     detail=(
                         f"Found {total} outlier value(s) across {len(affected)} column(s) by the "
                         "1.5xIQR rule. No values were changed."
@@ -368,10 +434,14 @@ class CleaningService:
 
         if strategy == "cap":
             for col, (lower, upper) in bounds.items():
-                df[col] = pd.to_numeric(df[col], errors="coerce").clip(lower=lower, upper=upper)
+                df[col] = pd.to_numeric(df[col], errors="coerce").clip(
+                    lower=lower, upper=upper
+                )
             return {
                 **CleaningService._step(
-                    "Cap outliers to IQR bounds", values=total, columns=affected,
+                    "Cap outliers to IQR bounds",
+                    values=total,
+                    columns=affected,
                     detail=f"Clipped {total} value(s) into the 1.5xIQR range across {len(affected)} column(s).",
                 ),
                 "_frame": df,
@@ -385,7 +455,9 @@ class CleaningService:
         removed = int(mask.sum())
         return {
             **CleaningService._step(
-                "Remove outlier rows", rows=removed, columns=affected,
+                "Remove outlier rows",
+                rows=removed,
+                columns=affected,
                 detail=f"Dropped {removed} row(s) containing at least one 1.5xIQR outlier.",
             ),
             "_frame": df.loc[~mask].reset_index(drop=True),

@@ -5,6 +5,7 @@ Produces structured, timestamped logs to stdout. In production this format
 is easy to ship into any log aggregator (CloudWatch, Loki, etc.) without
 extra parsing work.
 """
+
 import logging
 import sys
 
@@ -40,7 +41,9 @@ def configure_logging() -> None:
 
     # Quiet down noisy third-party loggers unless we're in debug mode.
     for noisy in ("uvicorn.access", "sqlalchemy.engine"):
-        logging.getLogger(noisy).setLevel(logging.WARNING if not settings.DEBUG else logging.INFO)
+        logging.getLogger(noisy).setLevel(
+            logging.WARNING if not settings.DEBUG else logging.INFO
+        )
 
 
 def get_logger(name: str) -> logging.Logger:

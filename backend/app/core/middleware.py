@@ -3,6 +3,7 @@ Cross-cutting HTTP middleware: request IDs (for log correlation) and
 security headers. Rate limiting is configured separately via slowapi in
 main.py (it needs to be attached to the app + individual routes).
 """
+
 import time
 import uuid
 
@@ -42,7 +43,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=()"
+        )
         if settings.is_production:
-            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains"
+            )
         return response

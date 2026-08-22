@@ -4,6 +4,7 @@ AI Copilot routes: ask, read history, clear history, and fetch suggestions.
 All logic lives in services/chat_service.py, which reads its configuration from
 `settings` (not os.getenv) and persists every turn to the ChatMessage table.
 """
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 

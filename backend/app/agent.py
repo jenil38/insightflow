@@ -2,6 +2,7 @@
 Guided Analysis route (formerly "Agent"). Pipeline logic lives in
 services/agent_service.py.
 """
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/datasets", tags=["guided-analysis"])
 
 @router.post("/{dataset_id}/agent/run")
 def run_guided_analysis(
-    apply_cleaning: bool = Query(default=True, description="Apply the recommended cleaning plan."),
+    apply_cleaning: bool = Query(
+        default=True, description="Apply the recommended cleaning plan."
+    ),
     train: bool = Query(default=True, description="Train models as part of the run."),
     dataset: models.Dataset = Depends(get_owned_dataset),
     db: Session = Depends(get_db),

@@ -6,6 +6,7 @@ The most important assertion in this file is
 train route function from the report generator, so every PDF download retrained
 all candidate models and bumped the model version.
 """
+
 import io
 
 import pytest
@@ -40,13 +41,19 @@ def train(client, headers, dataset_id, **overrides):
 
 # ---------------------------------------------------------------- config
 
+
 def test_training_options_offers_real_columns_and_reasons(client, dataset):
     dataset_id, headers = dataset
     r = client.get(f"/datasets/{dataset_id}/train/options", headers=headers)
     assert r.status_code == 200
     body = r.json()
 
-    assert {c["column"] for c in body["columns"]} == {"row_id", "region", "spend", "revenue"}
+    assert {c["column"] for c in body["columns"]} == {
+        "row_id",
+        "region",
+        "spend",
+        "revenue",
+    }
     assert body["recommended_target"] is not None
     # Every candidate must justify itself rather than presenting a bare number.
     for candidate in body["target_candidates"]:
@@ -70,7 +77,9 @@ def test_train_with_defaults_still_works(client, dataset):
 
 def test_train_honours_explicit_configuration(client, dataset):
     dataset_id, headers = dataset
-    r = train(client, headers, dataset_id, target_column="revenue", excluded_columns=["spend"])
+    r = train(
+        client, headers, dataset_id, target_column="revenue", excluded_columns=["spend"]
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["target_column"] == "revenue"
@@ -112,14 +121,17 @@ def test_train_rejects_invalid_configuration(client, dataset):
 
     # Out-of-range values are caught by schema validation.
     assert train(client, headers, dataset_id, test_size=0.99).status_code == 422
-    assert train(client, headers, dataset_id, cross_validation_folds=1).status_code == 422
+    assert (
+        train(client, headers, dataset_id, cross_validation_folds=1).status_code == 422
+    )
 
 
 def test_insufficient_rows_is_rejected_clearly(client, auth_headers):
     headers, _ = auth_headers
     tiny = b"a,b\n1,2\n3,4\n5,6\n"
     dataset_id = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": ("tiny.csv", io.BytesIO(tiny), "text/csv")},
     ).json()["id"]
 
@@ -129,6 +141,7 @@ def test_insufficient_rows_is_rejected_clearly(client, auth_headers):
 
 
 # --------------------------------------------------------------- history
+
 
 def test_model_history_and_versioning(client, dataset):
     dataset_id, headers = dataset
@@ -163,6 +176,7 @@ def test_model_download_before_and_after_training(client, dataset):
 
 # ----------------------------------------------------------- explainability
 
+
 def test_explain_requires_a_trained_model(client, dataset):
     """It must refuse rather than invent a throwaway model, as the original did."""
     dataset_id, headers = dataset
@@ -181,7 +195,10 @@ def test_explain_reports_the_method_it_actually_used(client, dataset):
 
     # The response must never leave the method ambiguous.
     assert body["method"] in {
-        "shap", "model_feature_importance", "coefficients", "permutation_importance"
+        "shap",
+        "model_feature_importance",
+        "coefficients",
+        "permutation_importance",
     }
     assert isinstance(body["fallback_used"], bool)
     assert body["fallback_used"] == (body["method"] != "shap")
@@ -208,6 +225,7 @@ def test_explain_describes_the_same_model_that_was_trained(client, dataset):
 
 # --------------------------------------------------------------- reporting
 
+
 def test_report_downloads_as_pdf(client, dataset):
     dataset_id, headers = dataset
     r = client.get(f"/datasets/{dataset_id}/report", headers=headers)
@@ -223,7 +241,10 @@ def test_report_works_without_a_trained_model(client, dataset):
     assert r.status_code == 200
     assert r.content.startswith(b"%PDF")
     # No model was trained, and generating a report must not create one.
-    assert client.get(f"/datasets/{dataset_id}/model/history", headers=headers).json() == []
+    assert (
+        client.get(f"/datasets/{dataset_id}/model/history", headers=headers).json()
+        == []
+    )
 
 
 def test_report_does_not_create_a_new_model_version(client, dataset):
@@ -235,7 +256,10 @@ def test_report_does_not_create_a_new_model_version(client, dataset):
     assert len(before) == 1
 
     for _ in range(3):
-        assert client.get(f"/datasets/{dataset_id}/report", headers=headers).status_code == 200
+        assert (
+            client.get(f"/datasets/{dataset_id}/report", headers=headers).status_code
+            == 200
+        )
 
     after = client.get(f"/datasets/{dataset_id}/model/history", headers=headers).json()
     assert len(after) == 1, "generating a report must not train a new model"
@@ -244,17 +268,23 @@ def test_report_does_not_create_a_new_model_version(client, dataset):
 
 def test_report_history_is_recorded(client, dataset):
     dataset_id, headers = dataset
-    assert client.get(f"/datasets/{dataset_id}/report/history", headers=headers).json() == []
+    assert (
+        client.get(f"/datasets/{dataset_id}/report/history", headers=headers).json()
+        == []
+    )
 
     client.get(f"/datasets/{dataset_id}/report", headers=headers)
     client.get(f"/datasets/{dataset_id}/report", headers=headers)
 
-    history = client.get(f"/datasets/{dataset_id}/report/history", headers=headers).json()
+    history = client.get(
+        f"/datasets/{dataset_id}/report/history", headers=headers
+    ).json()
     assert len(history) == 2
     assert all(record["format"] == "pdf" for record in history)
 
 
 # ------------------------------------------------------------------ agent
+
 
 def test_agent_pipeline_reports_real_per_step_status(client, dataset):
     dataset_id, headers = dataset
@@ -263,7 +293,15 @@ def test_agent_pipeline_reports_real_per_step_status(client, dataset):
     body = r.json()
 
     keys = [s["key"] for s in body["steps"]]
-    assert keys == ["profile", "quality", "clean", "analytics", "train", "explain", "summarise"]
+    assert keys == [
+        "profile",
+        "quality",
+        "clean",
+        "analytics",
+        "train",
+        "explain",
+        "summarise",
+    ]
     for step in body["steps"]:
         assert step["status"] in {"completed", "skipped", "failed"}
         assert step["duration_sec"] is not None
@@ -277,7 +315,8 @@ def test_agent_continues_when_training_cannot_run(client, auth_headers):
     headers, _ = auth_headers
     tiny = b"a,b\n1,2\n3,4\n5,6\n"
     dataset_id = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": ("tiny.csv", io.BytesIO(tiny), "text/csv")},
     ).json()["id"]
 
@@ -294,7 +333,8 @@ def test_agent_continues_when_training_cannot_run(client, auth_headers):
 def test_agent_can_skip_optional_stages(client, dataset):
     dataset_id, headers = dataset
     r = client.post(
-        f"/datasets/{dataset_id}/agent/run?apply_cleaning=false&train=false", headers=headers
+        f"/datasets/{dataset_id}/agent/run?apply_cleaning=false&train=false",
+        headers=headers,
     )
     assert r.status_code == 200
     steps = {s["key"]: s for s in r.json()["steps"]}

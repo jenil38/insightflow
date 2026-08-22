@@ -1,4 +1,5 @@
 """ML pipeline tests: training, model history, explainability, and report generation."""
+
 import io
 import pytest
 
@@ -30,10 +31,17 @@ SALES_CSV = (
 
 @pytest.fixture
 def setup(client):
-    client.post("/auth/register", json={
-        "email": "ml@example.com", "password": "StrongPass1!", "full_name": "ML User"
-    })
-    r = client.post("/auth/login", json={"email": "ml@example.com", "password": "StrongPass1!"})
+    client.post(
+        "/auth/register",
+        json={
+            "email": "ml@example.com",
+            "password": "StrongPass1!",
+            "full_name": "ML User",
+        },
+    )
+    r = client.post(
+        "/auth/login", json={"email": "ml@example.com", "password": "StrongPass1!"}
+    )
     tokens = r.json()
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
 
@@ -58,11 +66,15 @@ def test_training_options_returns_columns(client, setup):
 
 def test_train_produces_model_run(client, setup):
     headers, dataset_id = setup
-    r = client.post(f"/datasets/{dataset_id}/train", headers=headers, json={
-        "target_column": "revenue",
-        "task_type": "regression",
-        "enable_tuning": False,
-    })
+    r = client.post(
+        f"/datasets/{dataset_id}/train",
+        headers=headers,
+        json={
+            "target_column": "revenue",
+            "task_type": "regression",
+            "enable_tuning": False,
+        },
+    )
     assert r.status_code == 200
     body = r.json()
     assert "best_model" in body or "best_model_name" in body or "leaderboard" in body
@@ -70,11 +82,15 @@ def test_train_produces_model_run(client, setup):
 
 def test_model_history_tracks_versions(client, setup):
     headers, dataset_id = setup
-    client.post(f"/datasets/{dataset_id}/train", headers=headers, json={
-        "target_column": "revenue",
-        "task_type": "regression",
-        "enable_tuning": False,
-    })
+    client.post(
+        f"/datasets/{dataset_id}/train",
+        headers=headers,
+        json={
+            "target_column": "revenue",
+            "task_type": "regression",
+            "enable_tuning": False,
+        },
+    )
 
     r = client.get(f"/datasets/{dataset_id}/model/history", headers=headers)
     assert r.status_code == 200
@@ -84,11 +100,15 @@ def test_model_history_tracks_versions(client, setup):
 
 def test_explainability_after_training(client, setup):
     headers, dataset_id = setup
-    client.post(f"/datasets/{dataset_id}/train", headers=headers, json={
-        "target_column": "revenue",
-        "task_type": "regression",
-        "enable_tuning": False,
-    })
+    client.post(
+        f"/datasets/{dataset_id}/train",
+        headers=headers,
+        json={
+            "target_column": "revenue",
+            "task_type": "regression",
+            "enable_tuning": False,
+        },
+    )
 
     r = client.get(f"/datasets/{dataset_id}/explain", headers=headers)
     assert r.status_code == 200
@@ -137,38 +157,52 @@ def test_analytics_dashboard(client, setup):
 
 def test_analytics_query(client, setup):
     headers, dataset_id = setup
-    r = client.post(f"/datasets/{dataset_id}/analytics/query", headers=headers, json={
-        "measure": "revenue",
-        "aggregation": "sum",
-        "dimension": "region",
-        "chart_type": "bar",
-    })
+    r = client.post(
+        f"/datasets/{dataset_id}/analytics/query",
+        headers=headers,
+        json={
+            "measure": "revenue",
+            "aggregation": "sum",
+            "dimension": "region",
+            "chart_type": "bar",
+        },
+    )
     assert r.status_code == 200
 
 
 def test_dashboard_layout_crud(client, setup):
     headers, dataset_id = setup
 
-    r = client.post(f"/datasets/{dataset_id}/dashboard-layouts", headers=headers, json={
-        "name": "My Dashboard",
-        "charts": [{"type": "bar", "measure": "revenue"}],
-        "is_default": True,
-    })
+    r = client.post(
+        f"/datasets/{dataset_id}/dashboard-layouts",
+        headers=headers,
+        json={
+            "name": "My Dashboard",
+            "charts": [{"type": "bar", "measure": "revenue"}],
+            "is_default": True,
+        },
+    )
     assert r.status_code == 201
     layout_id = r.json()["id"]
 
     r2 = client.get(f"/datasets/{dataset_id}/dashboard-layouts", headers=headers)
     assert len(r2.json()) == 1
 
-    r3 = client.put(f"/datasets/{dataset_id}/dashboard-layouts/{layout_id}", headers=headers, json={
-        "name": "Updated Dashboard",
-        "charts": [{"type": "line", "measure": "profit"}],
-        "is_default": True,
-    })
+    r3 = client.put(
+        f"/datasets/{dataset_id}/dashboard-layouts/{layout_id}",
+        headers=headers,
+        json={
+            "name": "Updated Dashboard",
+            "charts": [{"type": "line", "measure": "profit"}],
+            "is_default": True,
+        },
+    )
     assert r3.status_code == 200
     assert r3.json()["name"] == "Updated Dashboard"
 
-    r4 = client.delete(f"/datasets/{dataset_id}/dashboard-layouts/{layout_id}", headers=headers)
+    r4 = client.delete(
+        f"/datasets/{dataset_id}/dashboard-layouts/{layout_id}", headers=headers
+    )
     assert r4.status_code == 200
 
 

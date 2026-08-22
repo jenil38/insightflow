@@ -5,6 +5,7 @@ Existing schemas (UserCreate, UserOut, Token, LoginRequest, DatasetOut, Page)
 keep their original field shapes so the current frontend keeps working
 untouched. New fields/schemas are additive.
 """
+
 from datetime import datetime
 from typing import Any, Generic, Literal, TypeVar
 
@@ -24,6 +25,7 @@ _ALLOW_MODEL_PREFIX = ConfigDict(from_attributes=True, protected_namespaces=())
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -89,6 +91,7 @@ class EmailVerifyRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Datasets
 # ---------------------------------------------------------------------------
+
 
 class DatasetOut(BaseModel):
     id: int
@@ -211,13 +214,22 @@ class CleaningRequest(BaseModel):
 Aggregation = Literal["sum", "avg", "count", "min", "max", "median"]
 TimeGrain = Literal["day", "week", "month", "quarter", "year"]
 ChartType = Literal[
-    "line", "area", "bar", "horizontal_bar", "pie", "scatter", "histogram", "table", "kpi"
+    "line",
+    "area",
+    "bar",
+    "horizontal_bar",
+    "pie",
+    "scatter",
+    "histogram",
+    "table",
+    "kpi",
 ]
 
 
 class AnalyticsQuery(BaseModel):
     measure: str | None = Field(
-        default=None, description="Numeric column to aggregate. Omit for count-only queries."
+        default=None,
+        description="Numeric column to aggregate. Omit for count-only queries.",
     )
     aggregation: Aggregation = "sum"
     dimension: str | None = Field(default=None, description="Column to group by.")
@@ -253,6 +265,7 @@ class DashboardLayoutOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Machine learning
 # ---------------------------------------------------------------------------
+
 
 class TrainRequest(BaseModel):
     """Every field is optional: an empty body reproduces the original fully
@@ -303,6 +316,7 @@ class TrainConfigOptions(BaseModel):
 # Copilot
 # ---------------------------------------------------------------------------
 
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
@@ -331,6 +345,7 @@ class SuggestedQuestions(BaseModel):
 # ---------------------------------------------------------------------------
 # Reports
 # ---------------------------------------------------------------------------
+
 
 class ReportRecordOut(BaseModel):
     id: int

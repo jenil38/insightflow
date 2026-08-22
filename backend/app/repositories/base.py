@@ -1,5 +1,6 @@
 """Generic repository base class - thin wrapper over SQLAlchemy Session
 so services depend on a repository interface rather than the ORM directly."""
+
 from typing import Generic, Type, TypeVar
 
 from sqlalchemy.orm import Session

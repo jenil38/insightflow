@@ -7,6 +7,7 @@ decided independently whether to use the original or the cleaned file. Two of
 them disagreed - which is why cleaning appeared to have no effect on profiling.
 Everything now goes through `load_dataset` / `resolve_path`.
 """
+
 from __future__ import annotations
 
 import os
@@ -125,7 +126,9 @@ def load_dataset(
 
     if df is None or df.empty:
         raise ValidationAppError(
-            "This dataset contains no rows.", error_code="empty_dataset", status_code=400
+            "This dataset contains no rows.",
+            error_code="empty_dataset",
+            status_code=400,
         )
 
     # Duplicate column labels break almost every downstream pandas operation,
@@ -138,7 +141,9 @@ def load_dataset(
         df = df.sample(n=max_rows, random_state=42).reset_index(drop=True)
         sampled = True
 
-    return LoadedFrame(df=df, source=source, path=path, total_rows=total_rows, sampled=sampled)
+    return LoadedFrame(
+        df=df, source=source, path=path, total_rows=total_rows, sampled=sampled
+    )
 
 
 def deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:

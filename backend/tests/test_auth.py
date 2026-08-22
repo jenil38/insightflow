@@ -1,7 +1,11 @@
 def test_register_success(client):
     r = client.post(
         "/auth/register",
-        json={"email": "new@example.com", "password": "StrongPass1!", "full_name": "New User"},
+        json={
+            "email": "new@example.com",
+            "password": "StrongPass1!",
+            "full_name": "New User",
+        },
     )
     assert r.status_code == 201
     body = r.json()
@@ -10,7 +14,9 @@ def test_register_success(client):
 
 
 def test_register_weak_password_rejected(client):
-    r = client.post("/auth/register", json={"email": "weak@example.com", "password": "weak"})
+    r = client.post(
+        "/auth/register", json={"email": "weak@example.com", "password": "weak"}
+    )
     assert r.status_code == 422
     assert r.json()["error_code"] == "weak_password"
 
@@ -22,7 +28,13 @@ def test_register_duplicate_email_rejected(client, registered_user):
 
 
 def test_login_success_returns_access_and_refresh_tokens(client, registered_user):
-    r = client.post("/auth/login", json={"email": registered_user["email"], "password": registered_user["password"]})
+    r = client.post(
+        "/auth/login",
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"],
+        },
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["access_token"]
@@ -31,7 +43,10 @@ def test_login_success_returns_access_and_refresh_tokens(client, registered_user
 
 
 def test_login_wrong_password_rejected(client, registered_user):
-    r = client.post("/auth/login", json={"email": registered_user["email"], "password": "WrongPass1!"})
+    r = client.post(
+        "/auth/login",
+        json={"email": registered_user["email"], "password": "WrongPass1!"},
+    )
     assert r.status_code == 401
     assert r.json()["error_code"] == "invalid_credentials"
 
@@ -73,7 +88,9 @@ def test_logout_revokes_refresh_token(client, auth_headers):
 
 
 def test_password_reset_flow(client, registered_user):
-    r = client.post("/auth/request-password-reset", json={"email": registered_user["email"]})
+    r = client.post(
+        "/auth/request-password-reset", json={"email": registered_user["email"]}
+    )
     assert r.status_code == 202
 
     # Grab the reset token directly from the DB since email delivery is stubbed to a log line.
@@ -82,18 +99,34 @@ def test_password_reset_flow(client, registered_user):
     from app import models
 
     db = TestingSessionLocal()
-    user = db.query(models.User).filter(models.User.email == registered_user["email"]).first()
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == registered_user["email"])
+        .first()
+    )
     reset_token = user.reset_token
     db.close()
     assert reset_token
 
-    r2 = client.post("/auth/reset-password", json={"token": reset_token, "new_password": "NewStrongPass1!"})
+    r2 = client.post(
+        "/auth/reset-password",
+        json={"token": reset_token, "new_password": "NewStrongPass1!"},
+    )
     assert r2.status_code == 200
 
     # Old password no longer works, new one does.
-    r3 = client.post("/auth/login", json={"email": registered_user["email"], "password": registered_user["password"]})
+    r3 = client.post(
+        "/auth/login",
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"],
+        },
+    )
     assert r3.status_code == 401
-    r4 = client.post("/auth/login", json={"email": registered_user["email"], "password": "NewStrongPass1!"})
+    r4 = client.post(
+        "/auth/login",
+        json={"email": registered_user["email"], "password": "NewStrongPass1!"},
+    )
     assert r4.status_code == 200
 
 
@@ -102,7 +135,11 @@ def test_email_verification_flow(client, registered_user):
     from app import models
 
     db = TestingSessionLocal()
-    user = db.query(models.User).filter(models.User.email == registered_user["email"]).first()
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == registered_user["email"])
+        .first()
+    )
     token = user.verification_token
     db.close()
     assert token
@@ -122,6 +159,9 @@ def test_rate_limit_on_login(client, registered_user):
     # RATE_LIMIT_AUTH defaults to 10/minute; hammering it should eventually 429.
     last_status = None
     for _ in range(15):
-        r = client.post("/auth/login", json={"email": registered_user["email"], "password": "WrongPass1!"})
+        r = client.post(
+            "/auth/login",
+            json={"email": registered_user["email"], "password": "WrongPass1!"},
+        )
         last_status = r.status_code
     assert last_status in (401, 429)

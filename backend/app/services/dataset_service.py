@@ -5,6 +5,7 @@ metadata, CSV export, and deletion.
 `read_dataframe` is re-exported from dataframe_io for backward compatibility -
 several routers import it from this module.
 """
+
 from __future__ import annotations
 
 import io
@@ -13,7 +14,6 @@ import re
 import uuid
 from typing import Any
 
-import pandas as pd
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -22,7 +22,7 @@ from ..core.exceptions import NotFoundError, ValidationAppError
 from ..core.serialization import dataframe_records, to_jsonable
 from ..repositories.dataset_repository import DatasetRepository
 from .dataframe_io import load_dataset, read_dataframe, resolve_path  # noqa: F401 - re-exported
-from .profiling_service import infer_semantic_type, profiling_service
+from .profiling_service import profiling_service
 
 ALLOWED_EXT = {".csv", ".xlsx", ".json"}
 
@@ -33,7 +33,8 @@ EXPECTED_CONTENT_TYPES = {
     ".csv": {"text/csv", "application/csv", "text/plain", "application/vnd.ms-excel"},
     ".xlsx": {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel", "application/zip",
+        "application/vnd.ms-excel",
+        "application/zip",
     },
     ".xls": {"application/vnd.ms-excel", "application/x-ole-storage"},
     ".json": {"application/json", "text/json", "text/plain"},
@@ -64,7 +65,11 @@ class DatasetService:
 
     # -------------------------------------------------------------- upload
     def upload(
-        self, owner_id: int, filename: str, contents: bytes, content_type: str | None = None
+        self,
+        owner_id: int,
+        filename: str,
+        contents: bytes,
+        content_type: str | None = None,
     ) -> models.Dataset:
         display_name = safe_filename(filename)
         ext = os.path.splitext(display_name)[1].lower()
@@ -122,14 +127,13 @@ class DatasetService:
         if df.shape[1] == 0:
             self._discard(stored_path)
             raise ValidationAppError(
-                "The file contains no columns.", error_code="no_columns", status_code=400
+                "The file contains no columns.",
+                error_code="no_columns",
+                status_code=400,
             )
 
         rows, cols = df.shape
-        schema_info = [
-            {"name": str(c), "dtype": str(df[c].dtype)}
-            for c in df.columns
-        ]
+        schema_info = [{"name": str(c), "dtype": str(df[c].dtype)} for c in df.columns]
         dataset = models.Dataset(
             owner_id=owner_id,
             filename=display_name,
@@ -193,45 +197,74 @@ class DatasetService:
         out = []
         for d in datasets:
             latest = latest_by_dataset.get(d.id)
-            out.append({
-                "id": d.id, "filename": d.filename, "file_type": d.file_type,
-                "rows": d.rows, "columns": d.columns, "size_bytes": d.size_bytes,
-                "uploaded_at": d.uploaded_at,
-                "has_cleaned_version": bool(d.cleaned_path and os.path.exists(d.cleaned_path)),
-                "model_run_count": int(counts.get(d.id, 0)),
-                "latest_model_name": latest.best_model_name if latest else None,
-            })
+            out.append(
+                {
+                    "id": d.id,
+                    "filename": d.filename,
+                    "file_type": d.file_type,
+                    "rows": d.rows,
+                    "columns": d.columns,
+                    "size_bytes": d.size_bytes,
+                    "uploaded_at": d.uploaded_at,
+                    "has_cleaned_version": bool(
+                        d.cleaned_path and os.path.exists(d.cleaned_path)
+                    ),
+                    "model_run_count": int(counts.get(d.id, 0)),
+                    "latest_model_name": latest.best_model_name if latest else None,
+                }
+            )
         return out
 
     def detail(self, dataset: models.Dataset, user_id: int) -> dict[str, Any]:
         """Full metadata for the workspace header, in a single request."""
         from sqlalchemy import func
 
-        has_cleaned = bool(dataset.cleaned_path and os.path.exists(dataset.cleaned_path))
+        has_cleaned = bool(
+            dataset.cleaned_path and os.path.exists(dataset.cleaned_path)
+        )
         latest = (
             self.db.query(models.ModelRun)
-            .filter(models.ModelRun.dataset_id == dataset.id, models.ModelRun.user_id == user_id)
+            .filter(
+                models.ModelRun.dataset_id == dataset.id,
+                models.ModelRun.user_id == user_id,
+            )
             .order_by(models.ModelRun.version.desc())
             .first()
         )
         model_count = (
             self.db.query(func.count(models.ModelRun.id))
-            .filter(models.ModelRun.dataset_id == dataset.id, models.ModelRun.user_id == user_id)
-            .scalar() or 0
+            .filter(
+                models.ModelRun.dataset_id == dataset.id,
+                models.ModelRun.user_id == user_id,
+            )
+            .scalar()
+            or 0
         )
         report_count = (
             self.db.query(func.count(models.ReportRecord.id))
-            .filter(models.ReportRecord.dataset_id == dataset.id, models.ReportRecord.user_id == user_id)
-            .scalar() or 0
+            .filter(
+                models.ReportRecord.dataset_id == dataset.id,
+                models.ReportRecord.user_id == user_id,
+            )
+            .scalar()
+            or 0
         )
         chat_count = (
             self.db.query(func.count(models.ChatMessage.id))
-            .filter(models.ChatMessage.dataset_id == dataset.id, models.ChatMessage.user_id == user_id)
-            .scalar() or 0
+            .filter(
+                models.ChatMessage.dataset_id == dataset.id,
+                models.ChatMessage.user_id == user_id,
+            )
+            .scalar()
+            or 0
         )
         return {
-            "id": dataset.id, "filename": dataset.filename, "file_type": dataset.file_type,
-            "rows": dataset.rows, "columns": dataset.columns, "size_bytes": dataset.size_bytes,
+            "id": dataset.id,
+            "filename": dataset.filename,
+            "file_type": dataset.file_type,
+            "rows": dataset.rows,
+            "columns": dataset.columns,
+            "size_bytes": dataset.size_bytes,
             "uploaded_at": dataset.uploaded_at,
             "has_cleaned_version": has_cleaned,
             "active_source": "cleaned" if has_cleaned else "original",
@@ -251,18 +284,24 @@ class DatasetService:
         datasets = self.repo.list_for_owner(user_id)
         model_runs = (
             self.db.query(func.count(models.ModelRun.id))
-            .filter(models.ModelRun.user_id == user_id).scalar() or 0
+            .filter(models.ModelRun.user_id == user_id)
+            .scalar()
+            or 0
         )
         reports = (
             self.db.query(func.count(models.ReportRecord.id))
-            .filter(models.ReportRecord.user_id == user_id).scalar() or 0
+            .filter(models.ReportRecord.user_id == user_id)
+            .scalar()
+            or 0
         )
         return {
             "dataset_count": len(datasets),
             "total_rows": sum(d.rows or 0 for d in datasets),
             "total_columns": sum(d.columns or 0 for d in datasets),
             "total_storage_bytes": sum(d.size_bytes or 0 for d in datasets),
-            "latest_upload_at": max((d.uploaded_at for d in datasets if d.uploaded_at), default=None),
+            "latest_upload_at": max(
+                (d.uploaded_at for d in datasets if d.uploaded_at), default=None
+            ),
             "model_run_count": int(model_runs),
             "report_count": int(reports),
             "cleaned_dataset_count": sum(
@@ -307,7 +346,9 @@ class DatasetService:
                 # Match across all columns as text; regex=False so user input is
                 # never interpreted as a pattern.
                 mask = df.apply(
-                    lambda col: col.astype(str).str.contains(needle, case=False, na=False, regex=False)
+                    lambda col: col.astype(str).str.contains(
+                        needle, case=False, na=False, regex=False
+                    )
                 ).any(axis=1)
                 df = df[mask]
 
@@ -319,7 +360,10 @@ class DatasetService:
                     status_code=400,
                 )
             df = df.sort_values(
-                sort_by, ascending=(sort_dir != "desc"), kind="mergesort", na_position="last"
+                sort_by,
+                ascending=(sort_dir != "desc"),
+                kind="mergesort",
+                na_position="last",
             )
 
         total = int(len(df))
@@ -327,20 +371,24 @@ class DatasetService:
         page = max(1, min(page, total_pages))
         window = df.iloc[(page - 1) * page_size : page * page_size]
 
-        return to_jsonable({
-            "columns": [str(c) for c in df.columns],
-            "rows": dataframe_records(window),
-            "total_rows": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-            "source": loaded.source,
-            "sort_by": sort_by,
-            "sort_dir": "desc" if sort_dir == "desc" else "asc",
-            "search": search,
-        })
+        return to_jsonable(
+            {
+                "columns": [str(c) for c in df.columns],
+                "rows": dataframe_records(window),
+                "total_rows": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "source": loaded.source,
+                "sort_by": sort_by,
+                "sort_dir": "desc" if sort_dir == "desc" else "asc",
+                "search": search,
+            }
+        )
 
-    def columns_metadata(self, dataset: models.Dataset, use_cleaned: bool = True) -> dict[str, Any]:
+    def columns_metadata(
+        self, dataset: models.Dataset, use_cleaned: bool = True
+    ) -> dict[str, Any]:
         loaded = load_dataset(
             dataset,
             prefer="auto" if use_cleaned else "original",
@@ -362,14 +410,17 @@ class DatasetService:
         )
         if column not in loaded.df.columns:
             raise NotFoundError(
-                f"Column '{column}' is not in this dataset.", error_code="unknown_column"
+                f"Column '{column}' is not in this dataset.",
+                error_code="unknown_column",
             )
         profile = profiling_service.column_profile(loaded.df, column)
         profile["data_source"] = loaded.source
         profile["sampled"] = loaded.sampled
         return profile
 
-    def export_csv(self, dataset: models.Dataset, use_cleaned: bool = True) -> tuple[bytes, str]:
+    def export_csv(
+        self, dataset: models.Dataset, use_cleaned: bool = True
+    ) -> tuple[bytes, str]:
         """Export the active (cleaned or original) data as CSV bytes."""
         loaded = load_dataset(dataset, prefer="auto" if use_cleaned else "original")
         buffer = io.StringIO()

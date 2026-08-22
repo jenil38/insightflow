@@ -6,9 +6,9 @@ for status. Replace with Celery/RQ for multi-node deployments.
 
 States: queued -> running -> completed | failed | cancelled
 """
+
 from __future__ import annotations
 
-import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -51,7 +51,9 @@ class Job:
             "error": self.error,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "dataset_id": self.dataset_id,
             "has_result": self.result is not None,
         }
@@ -125,11 +127,13 @@ class JobManager:
     def cleanup_old(self, max_age_hours: int = 24) -> int:
         cutoff = datetime.now(timezone.utc)
         from datetime import timedelta
+
         cutoff -= timedelta(hours=max_age_hours)
         removed = 0
         with self._lock:
             to_remove = [
-                jid for jid, j in self._jobs.items()
+                jid
+                for jid, j in self._jobs.items()
                 if j.completed_at and j.completed_at < cutoff
             ]
             for jid in to_remove:

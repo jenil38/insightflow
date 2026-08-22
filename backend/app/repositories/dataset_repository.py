@@ -5,10 +5,14 @@ from .base import BaseRepository
 class DatasetRepository(BaseRepository[models.Dataset]):
     model = models.Dataset
 
-    def get_by_id_for_owner(self, dataset_id: int, owner_id: int) -> models.Dataset | None:
+    def get_by_id_for_owner(
+        self, dataset_id: int, owner_id: int
+    ) -> models.Dataset | None:
         return (
             self.db.query(models.Dataset)
-            .filter(models.Dataset.id == dataset_id, models.Dataset.owner_id == owner_id)
+            .filter(
+                models.Dataset.id == dataset_id, models.Dataset.owner_id == owner_id
+            )
             .first()
         )
 

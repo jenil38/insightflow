@@ -4,6 +4,7 @@ Cleaning routes: recommend a plan, preview it, apply it, or revert it.
 `clean_dataframe` is re-exported for backward compatibility (agent.py and
 report.py historically imported it from here).
 """
+
 import os
 
 from fastapi import APIRouter, Depends
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/datasets", tags=["cleaning"])
 def cleaning_plan(dataset: models.Dataset = Depends(get_owned_dataset)):
     """A suggested cleaning configuration, with the reasons behind each choice,
     so the UI can pre-select only what this dataset actually needs."""
-    loaded = load_dataset(dataset, prefer="original", max_rows=settings.PROFILE_SAMPLE_ROWS)
+    loaded = load_dataset(
+        dataset, prefer="original", max_rows=settings.PROFILE_SAMPLE_ROWS
+    )
     plan = cleaning_service.recommend_config(loaded.df)
     plan["has_cleaned_version"] = bool(
         dataset.cleaned_path and os.path.exists(dataset.cleaned_path)
@@ -41,7 +44,9 @@ def preview_cleaning(
 ):
     """Compute the full effect of a cleaning config without writing anything."""
     config = (body or schemas.CleaningRequest()).config
-    loaded = load_dataset(dataset, prefer="original", max_rows=settings.PROFILE_SAMPLE_ROWS)
+    loaded = load_dataset(
+        dataset, prefer="original", max_rows=settings.PROFILE_SAMPLE_ROWS
+    )
     return cleaning_service.preview(loaded.df, config)
 
 
@@ -117,6 +122,7 @@ def revert_cleaning(
         "data_source": "original",
         "detail": (
             "Reverted to the original uploaded data."
-            if had_cleaned else "This dataset had no cleaned version; nothing to revert."
+            if had_cleaned
+            else "This dataset had no cleaned version; nothing to revert."
         ),
     }

@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
 
 from .. import models
 from .base import BaseRepository
@@ -13,10 +12,16 @@ class UserRepository(BaseRepository[models.User]):
         return self.db.query(models.User).filter(models.User.email == email).first()
 
     def get_by_verification_token(self, token: str) -> models.User | None:
-        return self.db.query(models.User).filter(models.User.verification_token == token).first()
+        return (
+            self.db.query(models.User)
+            .filter(models.User.verification_token == token)
+            .first()
+        )
 
     def get_by_reset_token(self, token: str) -> models.User | None:
-        return self.db.query(models.User).filter(models.User.reset_token == token).first()
+        return (
+            self.db.query(models.User).filter(models.User.reset_token == token).first()
+        )
 
 
 class RefreshTokenRepository(BaseRepository[models.RefreshToken]):
@@ -40,6 +45,7 @@ class RefreshTokenRepository(BaseRepository[models.RefreshToken]):
 
     def revoke_all_for_user(self, user_id: int) -> None:
         self.db.query(models.RefreshToken).filter(
-            models.RefreshToken.user_id == user_id, models.RefreshToken.revoked.is_(False)
+            models.RefreshToken.user_id == user_id,
+            models.RefreshToken.revoked.is_(False),
         ).update({"revoked": True})
         self.db.commit()

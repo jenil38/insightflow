@@ -7,6 +7,7 @@ SMTP delivery is stubbed to a log line unless SMTP_HOST is configured, so
 you can wire up a real provider (SES, SendGrid, Postmark, etc.) by filling
 in `_send_via_smtp` without touching any calling code.
 """
+
 import logging
 import smtplib
 from email.mime.text import MIMEText
@@ -35,7 +36,9 @@ class EmailService:
 
     def _send(self, to_email: str, subject: str, body: str) -> None:
         if not settings.SMTP_HOST:
-            logger.info("[EMAIL:DEV-LOG-ONLY] To=%s Subject=%s Body=%s", to_email, subject, body)
+            logger.info(
+                "[EMAIL:DEV-LOG-ONLY] To=%s Subject=%s Body=%s", to_email, subject, body
+            )
             return
         self._send_via_smtp(to_email, subject, body)
 

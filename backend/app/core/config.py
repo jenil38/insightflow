@@ -7,6 +7,7 @@ This gives us one validated source of truth and fails fast on boot if
 something required is missing/misconfigured, instead of failing later
 inside a random request handler.
 """
+
 import os
 import secrets
 import warnings

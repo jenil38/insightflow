@@ -9,12 +9,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app import models
 from app.database import Base, get_db
 from app.main import app
 
 TEST_DB_PATH = "./test_insightflow.db"
-engine = create_engine(f"sqlite:///{TEST_DB_PATH}", connect_args={"check_same_thread": False})
+engine = create_engine(
+    f"sqlite:///{TEST_DB_PATH}", connect_args={"check_same_thread": False}
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -52,13 +53,23 @@ def client():
 
 @pytest.fixture
 def registered_user(client):
-    payload = {"email": "user@example.com", "password": "StrongPass1!", "full_name": "Test User"}
+    payload = {
+        "email": "user@example.com",
+        "password": "StrongPass1!",
+        "full_name": "Test User",
+    }
     client.post("/auth/register", json=payload)
     return payload
 
 
 @pytest.fixture
 def auth_headers(client, registered_user):
-    r = client.post("/auth/login", json={"email": registered_user["email"], "password": registered_user["password"]})
+    r = client.post(
+        "/auth/login",
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"],
+        },
+    )
     tokens = r.json()
     return {"Authorization": f"Bearer {tokens['access_token']}"}, tokens

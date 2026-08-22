@@ -5,6 +5,7 @@ Delegates to services/explainability_service.py, which explains the persisted
 best model from the latest training run and always reports which method
 produced the numbers (`method`, `fallback_used`, `fallback_reason`).
 """
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

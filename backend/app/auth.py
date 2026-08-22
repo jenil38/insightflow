@@ -8,6 +8,7 @@ the new core/security.py + services/auth_service.py implementation. New
 code should prefer importing from `app.core.security` / `app.services.auth_service`
 directly; this file exists purely for compatibility.
 """
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session

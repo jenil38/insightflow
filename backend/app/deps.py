@@ -7,6 +7,7 @@ every dataset-scoped route. Previously each router repeated
 kind of thing that silently gets forgotten on a newly added endpoint and turns
 into a cross-tenant data leak.
 """
+
 from __future__ import annotations
 
 from fastapi import Depends, Path
@@ -29,7 +30,9 @@ def get_owned_dataset(
     """
     dataset = (
         db.query(models.Dataset)
-        .filter(models.Dataset.id == dataset_id, models.Dataset.owner_id == current_user.id)
+        .filter(
+            models.Dataset.id == dataset_id, models.Dataset.owner_id == current_user.id
+        )
         .first()
     )
     if dataset is None:
