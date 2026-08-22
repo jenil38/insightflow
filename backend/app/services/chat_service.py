@@ -17,6 +17,7 @@ sanitised sample. Dataset content is fenced and explicitly labelled as untrusted
 data, and the system prompt tells the model to treat it as values to describe,
 never as instructions to follow.
 """
+
 from __future__ import annotations
 
 import re
@@ -35,8 +36,11 @@ from ..core.logging_config import get_logger
 from ..core.serialization import safe_float, to_jsonable
 from .dataframe_io import load_dataset
 from .profiling_service import (
-    compute_correlations, compute_quality_scores, infer_semantic_type,
-    profile_dataframe, recommend_targets,
+    compute_correlations,
+    compute_quality_scores,
+    infer_semantic_type,
+    profile_dataframe,
+    recommend_targets,
 )
 
 logger = get_logger("insightflow.copilot")
@@ -73,25 +77,33 @@ class LLMProvider:
         if response.status_code == 401:
             raise ValidationAppError(
                 "The AI provider rejected the configured API key.",
-                error_code="copilot_bad_key", status_code=502,
+                error_code="copilot_bad_key",
+                status_code=502,
             )
         if response.status_code == 429:
             raise ValidationAppError(
                 "The AI provider is rate-limiting this server. Wait a moment and try again.",
-                error_code="copilot_rate_limited", status_code=429,
+                error_code="copilot_rate_limited",
+                status_code=429,
             )
         if response.status_code >= 400:
-            logger.error("Copilot provider error %s: %s", response.status_code, response.text[:400])
+            logger.error(
+                "Copilot provider error %s: %s",
+                response.status_code,
+                response.text[:400],
+            )
             raise ValidationAppError(
                 f"The AI provider returned an error ({response.status_code}).",
-                error_code="copilot_provider_error", status_code=502,
+                error_code="copilot_provider_error",
+                status_code=502,
             )
         try:
             return response.json()["choices"][0]["message"]["content"].strip()
         except (KeyError, IndexError, ValueError) as exc:
             raise ValidationAppError(
                 "The AI provider returned an unexpected response format.",
-                error_code="copilot_bad_response", status_code=502,
+                error_code="copilot_bad_response",
+                status_code=502,
             ) from exc
 
 
@@ -111,7 +123,10 @@ class CircuitBreaker:
     @property
     def state(self) -> str:
         with self._lock:
-            if self._state == self.OPEN and time.monotonic() - self._opened_at >= self._recovery_timeout:
+            if (
+                self._state == self.OPEN
+                and time.monotonic() - self._opened_at >= self._recovery_timeout
+            ):
                 self._state = self.HALF_OPEN
             return self._state
 
@@ -126,14 +141,17 @@ class CircuitBreaker:
             if self._failures >= self._threshold:
                 self._state = self.OPEN
                 self._opened_at = time.monotonic()
-                logger.warning("Circuit breaker OPEN after %d consecutive failures", self._failures)
+                logger.warning(
+                    "Circuit breaker OPEN after %d consecutive failures", self._failures
+                )
 
     def check(self) -> None:
         if self.state == self.OPEN:
             raise ValidationAppError(
                 "The AI provider has been temporarily disabled after repeated failures. "
                 "It will be retried automatically shortly.",
-                error_code="copilot_circuit_open", status_code=503,
+                error_code="copilot_circuit_open",
+                status_code=503,
             )
 
 
@@ -200,7 +218,9 @@ class ChatService:
         self.db.commit()
         return int(deleted)
 
-    def _save(self, dataset_id: int, user_id: int, role: str, content: str) -> models.ChatMessage:
+    def _save(
+        self, dataset_id: int, user_id: int, role: str, content: str
+    ) -> models.ChatMessage:
         message = models.ChatMessage(
             dataset_id=dataset_id, user_id=user_id, role=role, content=content
         )
@@ -220,22 +240,30 @@ class ChatService:
 
             types = {c: infer_semantic_type(df[c]) for c in df.columns}
             numeric = [c for c, t in types.items() if t == "numeric"]
-            categorical = [c for c, t in types.items() if t in ("categorical", "boolean")]
+            categorical = [
+                c for c, t in types.items() if t in ("categorical", "boolean")
+            ]
             dates = [c for c, t in types.items() if t == "datetime"]
 
             if int(df.isna().sum().sum()) > 0:
                 questions.append("Which columns have the most missing values?")
             if len(numeric) >= 2:
-                questions.append("What are the strongest correlations between the numeric columns?")
+                questions.append(
+                    "What are the strongest correlations between the numeric columns?"
+                )
             if categorical:
                 questions.append(f"Which values of {categorical[0]} occur most often?")
             if numeric:
-                questions.append(f"Are there unusual or extreme values in {numeric[0]}?")
+                questions.append(
+                    f"Are there unusual or extreme values in {numeric[0]}?"
+                )
             if dates and numeric:
                 questions.append(f"How does {numeric[0]} change over {dates[0]}?")
             targets = recommend_targets(df, limit=1)
             if targets:
-                questions.append(f"Would {targets[0]['column']} be a good column to predict, and why?")
+                questions.append(
+                    f"Would {targets[0]['column']} be a good column to predict, and why?"
+                )
             questions.append("What data quality issues should I fix before modelling?")
         except AppException:
             # An unreadable file shouldn't break the suggestion chips.
@@ -244,7 +272,9 @@ class ChatService:
         return {"questions": questions[:7], "copilot_enabled": settings.copilot_enabled}
 
     # ---------------------------------------------------------------- ask
-    def ask(self, dataset: models.Dataset, user_id: int, question: str) -> dict[str, Any]:
+    def ask(
+        self, dataset: models.Dataset, user_id: int, question: str
+    ) -> dict[str, Any]:
         if not settings.copilot_enabled:
             raise ValidationAppError(
                 "The AI Copilot is not configured on this server. Set GROQ_API_KEY in the "
@@ -254,14 +284,16 @@ class ChatService:
             )
 
         loaded = load_dataset(dataset, max_rows=settings.PROFILE_SAMPLE_ROWS)
-        context, columns_referenced = self._build_context(loaded.df, dataset, loaded.source, loaded.sampled)
+        context, columns_referenced = self._build_context(
+            loaded.df, dataset, loaded.source, loaded.sampled
+        )
 
         # Persist the question before calling out, so history is correct even if
         # the provider then fails.
         self._save(dataset.id, user_id, "user", question)
 
         prior = self.history(dataset.id, user_id)[:-1]
-        turns = prior[-(settings.COPILOT_HISTORY_TURNS * 2):]
+        turns = prior[-(settings.COPILOT_HISTORY_TURNS * 2) :]
         messages = [{"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context}]
         messages += [{"role": m.role, "content": m.content} for m in turns]
         messages.append({"role": "user", "content": question})
@@ -269,11 +301,13 @@ class ChatService:
         answer = self._call_llm(messages)
         saved = self._save(dataset.id, user_id, "assistant", answer)
 
-        return to_jsonable({
-            "answer": answer,
-            "columns_referenced": columns_referenced,
-            "message_id": saved.id,
-        })
+        return to_jsonable(
+            {
+                "answer": answer,
+                "columns_referenced": columns_referenced,
+                "message_id": saved.id,
+            }
+        )
 
     def _call_llm(self, messages: list[dict[str, str]]) -> str:
         _circuit.check()
@@ -286,14 +320,16 @@ class ChatService:
             _circuit.record_failure()
             raise ValidationAppError(
                 f"The AI provider did not respond within {settings.GROQ_TIMEOUT_SECONDS}s. Try again.",
-                error_code="copilot_timeout", status_code=504,
+                error_code="copilot_timeout",
+                status_code=504,
             ) from exc
         except requests.exceptions.RequestException as exc:
             _circuit.record_failure()
             logger.error("Copilot request failed: %s", exc)
             raise ValidationAppError(
                 "Could not reach the AI provider. Check the server's network access.",
-                error_code="copilot_unreachable", status_code=502,
+                error_code="copilot_unreachable",
+                status_code=502,
             ) from exc
         except ValidationAppError:
             _circuit.record_failure()
@@ -310,7 +346,8 @@ class ChatService:
         lines: list[str] = [
             "=== DATASET OVERVIEW (trusted, computed by InsightFlow) ===",
             f"Filename: {self._sanitize(dataset.filename)}",
-            f"Data source: {source} data" + (" (statistics computed on a random sample)" if sampled else ""),
+            f"Data source: {source} data"
+            + (" (statistics computed on a random sample)" if sampled else ""),
             f"Rows: {profile['rows']}, Columns: {profile['columns']}",
             f"Missing values: {profile['missing_values_pct']}% of all cells",
             f"Duplicate rows: {profile['duplicates_pct']}%",
@@ -339,10 +376,14 @@ class ChatService:
                     )
             elif semantic in ("categorical", "boolean"):
                 top = series.value_counts().head(5)
-                rendered = ", ".join(f"{self._sanitize(str(k))}={int(v)}" for k, v in top.items())
+                rendered = ", ".join(
+                    f"{self._sanitize(str(k))}={int(v)}" for k, v in top.items()
+                )
                 detail += f", distinct={int(series.dropna().nunique())}, most common: {rendered}"
             elif semantic == "datetime":
-                parsed = pd.to_datetime(series, errors="coerce", format="mixed").dropna()
+                parsed = pd.to_datetime(
+                    series, errors="coerce", format="mixed"
+                ).dropna()
                 if not parsed.empty:
                     detail += f", range {parsed.min().date()} to {parsed.max().date()}"
 
@@ -395,7 +436,13 @@ class ChatService:
     @staticmethod
     def _sanitize(text: str) -> str:
         """Neutralise fence-breaking and instruction-like content in a label."""
-        cleaned = str(text).replace("<<<", "<").replace(">>>", ">").replace("\n", " ").replace("\r", " ")
+        cleaned = (
+            str(text)
+            .replace("<<<", "<")
+            .replace(">>>", ">")
+            .replace("\n", " ")
+            .replace("\r", " ")
+        )
         if INJECTION_PATTERNS.search(cleaned):
             return "[redacted: value resembled an instruction]"
         return cleaned[:MAX_CELL_LENGTH]
@@ -404,7 +451,13 @@ class ChatService:
     def _sanitize_cell(cls, value: Any) -> tuple[str, bool]:
         if value is None or (isinstance(value, float) and pd.isna(value)):
             return "null", False
-        text = str(value).replace("\n", " ").replace("\r", " ").replace("<<<", "<").replace(">>>", ">")
+        text = (
+            str(value)
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .replace("<<<", "<")
+            .replace(">>>", ">")
+        )
         if INJECTION_PATTERNS.search(text):
             return "[redacted: value resembled an instruction]", True
         if len(text) > MAX_CELL_LENGTH:

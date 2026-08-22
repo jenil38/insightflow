@@ -1,4 +1,5 @@
 """Dataset detail, row-level preview, column metadata, and CSV export."""
+
 import io
 
 CSV = (
@@ -37,7 +38,9 @@ def test_preview_paginates_and_caps_page_size(client, auth_headers):
     headers, _ = auth_headers
     dataset_id = upload(client, headers).json()["id"]
 
-    r = client.get(f"/datasets/{dataset_id}/preview?page=1&page_size=2", headers=headers)
+    r = client.get(
+        f"/datasets/{dataset_id}/preview?page=1&page_size=2", headers=headers
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["total_rows"] == 5
@@ -47,15 +50,21 @@ def test_preview_paginates_and_caps_page_size(client, auth_headers):
     assert body["source"] == "original"
 
     # Page 2 returns different rows than page 1.
-    page2 = client.get(f"/datasets/{dataset_id}/preview?page=2&page_size=2", headers=headers).json()
+    page2 = client.get(
+        f"/datasets/{dataset_id}/preview?page=2&page_size=2", headers=headers
+    ).json()
     assert page2["rows"] != body["rows"]
 
     # A page beyond the end clamps to the last page rather than erroring.
-    last = client.get(f"/datasets/{dataset_id}/preview?page=99&page_size=2", headers=headers).json()
+    last = client.get(
+        f"/datasets/{dataset_id}/preview?page=99&page_size=2", headers=headers
+    ).json()
     assert last["page"] == 3
 
     # page_size above the server cap is rejected by validation.
-    too_big = client.get(f"/datasets/{dataset_id}/preview?page_size=99999", headers=headers)
+    too_big = client.get(
+        f"/datasets/{dataset_id}/preview?page_size=99999", headers=headers
+    )
     assert too_big.status_code == 422
 
 
@@ -70,22 +79,40 @@ def test_preview_sorting(client, auth_headers):
         f"/datasets/{dataset_id}/preview?sort_by=revenue&sort_dir=desc", headers=headers
     ).json()
 
-    assert [row["revenue"] for row in asc["rows"]] == [90.0, 100.5, 250.0, 310.25, 505.75]
-    assert [row["revenue"] for row in desc["rows"]] == [505.75, 310.25, 250.0, 100.5, 90.0]
+    assert [row["revenue"] for row in asc["rows"]] == [
+        90.0,
+        100.5,
+        250.0,
+        310.25,
+        505.75,
+    ]
+    assert [row["revenue"] for row in desc["rows"]] == [
+        505.75,
+        310.25,
+        250.0,
+        100.5,
+        90.0,
+    ]
 
 
 def test_preview_search_and_unknown_column(client, auth_headers):
     headers, _ = auth_headers
     dataset_id = upload(client, headers).json()["id"]
 
-    found = client.get(f"/datasets/{dataset_id}/preview?search=north", headers=headers).json()
+    found = client.get(
+        f"/datasets/{dataset_id}/preview?search=north", headers=headers
+    ).json()
     assert found["total_rows"] == 2
 
-    missing = client.get(f"/datasets/{dataset_id}/preview?search=nothinghere", headers=headers).json()
+    missing = client.get(
+        f"/datasets/{dataset_id}/preview?search=nothinghere", headers=headers
+    ).json()
     assert missing["total_rows"] == 0
     assert missing["rows"] == []
 
-    bad_sort = client.get(f"/datasets/{dataset_id}/preview?sort_by=nope", headers=headers)
+    bad_sort = client.get(
+        f"/datasets/{dataset_id}/preview?sort_by=nope", headers=headers
+    )
     assert bad_sort.status_code == 400
     assert bad_sort.json()["error_code"] == "unknown_column"
 

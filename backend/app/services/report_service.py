@@ -11,10 +11,10 @@ current data-quality profile, and the saved explanation. Nothing is trained as a
 side effect of generating a document. Sections whose data is unavailable are
 replaced with an honest note rather than omitted silently.
 """
+
 from __future__ import annotations
 
 import io
-import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -24,7 +24,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 from sqlalchemy.orm import Session
 
@@ -67,7 +72,10 @@ class ReportService:
         out: dict[str, Any] = {
             "generated_at": datetime.now(timezone.utc),
             "generated_stamp": datetime.now(timezone.utc).strftime("%Y%m%d%H%M"),
-            "quality": None, "dashboard": None, "model": None, "explanation": None,
+            "quality": None,
+            "dashboard": None,
+            "model": None,
+            "explanation": None,
             "notes": [],
         }
 
@@ -76,15 +84,20 @@ class ReportService:
             out["data_source"] = loaded.source
             out["sampled"] = loaded.sampled
             out["quality"] = profiling_service.full_profile(
-                loaded.df, dataset.size_bytes or 0, source=loaded.source,
-                sampled=loaded.sampled, total_rows=loaded.total_rows,
+                loaded.df,
+                dataset.size_bytes or 0,
+                source=loaded.source,
+                sampled=loaded.sampled,
+                total_rows=loaded.total_rows,
             )
             out["dashboard"] = analytics_service.auto_dashboard(loaded.df)
         except AppException as exc:
             out["notes"].append(f"Data quality and analytics unavailable: {exc.detail}")
         except Exception as exc:  # noqa: BLE001
             logger.error("Report profiling failed for dataset %s: %s", dataset.id, exc)
-            out["notes"].append("Data quality and analytics could not be computed for this dataset.")
+            out["notes"].append(
+                "Data quality and analytics could not be computed for this dataset."
+            )
 
         run = self.ml.latest_run(dataset.id, user_id)
         if run is None:
@@ -94,11 +107,16 @@ class ReportService:
             )
         else:
             out["model"] = {
-                "name": run.best_model_name, "task_type": run.task_type,
-                "target": run.target_column, "metrics": run.metrics or {},
-                "version": run.version, "trained_at": run.created_at,
-                "leaderboard": run.leaderboard or [], "features": run.features or [],
-                "rows_used": run.rows_used, "data_source": run.data_source,
+                "name": run.best_model_name,
+                "task_type": run.task_type,
+                "target": run.target_column,
+                "metrics": run.metrics or {},
+                "version": run.version,
+                "trained_at": run.created_at,
+                "leaderboard": run.leaderboard or [],
+                "features": run.features or [],
+                "rows_used": run.rows_used,
+                "data_source": run.data_source,
                 "config": run.config or {},
             }
             try:
@@ -112,9 +130,12 @@ class ReportService:
     def _render(self, dataset: models.Dataset, data: dict[str, Any]) -> bytes:
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
-            buffer, pagesize=A4,
-            topMargin=18 * mm, bottomMargin=18 * mm,
-            leftMargin=18 * mm, rightMargin=18 * mm,
+            buffer,
+            pagesize=A4,
+            topMargin=18 * mm,
+            bottomMargin=18 * mm,
+            leftMargin=18 * mm,
+            rightMargin=18 * mm,
             title=f"InsightFlow Report - {dataset.filename}",
             author="InsightFlow AI",
         )
@@ -126,16 +147,21 @@ class ReportService:
             Paragraph("InsightFlow AI", styles["brand"]),
             Paragraph("Automated Data Analysis Report", styles["h1"]),
             Spacer(1, 6 * mm),
-            self._kv_table([
-                ("Dataset", dataset.filename),
-                ("File type", (dataset.file_type or "").upper()),
-                ("Rows", f"{dataset.rows:,}" if dataset.rows else "Unknown"),
-                ("Columns", str(dataset.columns or "Unknown")),
-                ("File size", self._human_bytes(dataset.size_bytes)),
-                ("Uploaded", self._fmt_date(dataset.uploaded_at)),
-                ("Data analysed", f"{data.get('data_source', 'original').title()} data"),
-                ("Report generated", self._fmt_date(data["generated_at"])),
-            ]),
+            self._kv_table(
+                [
+                    ("Dataset", dataset.filename),
+                    ("File type", (dataset.file_type or "").upper()),
+                    ("Rows", f"{dataset.rows:,}" if dataset.rows else "Unknown"),
+                    ("Columns", str(dataset.columns or "Unknown")),
+                    ("File size", self._human_bytes(dataset.size_bytes)),
+                    ("Uploaded", self._fmt_date(dataset.uploaded_at)),
+                    (
+                        "Data analysed",
+                        f"{data.get('data_source', 'original').title()} data",
+                    ),
+                    ("Report generated", self._fmt_date(data["generated_at"])),
+                ]
+            ),
             Spacer(1, 8 * mm),
         ]
 
@@ -149,7 +175,10 @@ class ReportService:
                 Spacer(1, 5 * mm),
             ]
 
-        story += [Paragraph("Executive summary", styles["h2"]), *self._summary(dataset, data, styles)]
+        story += [
+            Paragraph("Executive summary", styles["h2"]),
+            *self._summary(dataset, data, styles),
+        ]
 
         # --- data quality ------------------------------------------------
         quality = data.get("quality")
@@ -166,11 +195,31 @@ class ReportService:
                 self._table(
                     ["Component", "Score", "How it is calculated"],
                     [
-                        ["Completeness", f"{q['completeness_score']}", q["score_definitions"]["completeness"]],
-                        ["Duplicate-freedom", f"{q['duplicate_score']}", q["score_definitions"]["duplicates"]],
-                        ["Type consistency", f"{q['consistency_score']}", q["score_definitions"]["consistency"]],
-                        ["Uniqueness", f"{q['uniqueness_score']}", q["score_definitions"]["uniqueness"]],
-                        ["Overall", f"{q['overall_score']}", q["score_definitions"]["overall"]],
+                        [
+                            "Completeness",
+                            f"{q['completeness_score']}",
+                            q["score_definitions"]["completeness"],
+                        ],
+                        [
+                            "Duplicate-freedom",
+                            f"{q['duplicate_score']}",
+                            q["score_definitions"]["duplicates"],
+                        ],
+                        [
+                            "Type consistency",
+                            f"{q['consistency_score']}",
+                            q["score_definitions"]["consistency"],
+                        ],
+                        [
+                            "Uniqueness",
+                            f"{q['uniqueness_score']}",
+                            q["score_definitions"]["uniqueness"],
+                        ],
+                        [
+                            "Overall",
+                            f"{q['overall_score']}",
+                            q["score_definitions"]["overall"],
+                        ],
                     ],
                     widths=[38 * mm, 18 * mm, 106 * mm],
                     wrap_last=True,
@@ -180,35 +229,43 @@ class ReportService:
             warnings = quality.get("warnings") or []
             if warnings:
                 story += [
-                    Spacer(1, 6 * mm), Paragraph("Issues found", styles["h3"]),
+                    Spacer(1, 6 * mm),
+                    Paragraph("Issues found", styles["h3"]),
                     self._table(
                         ["Severity", "Finding"],
                         [[w["severity"].title(), w["message"]] for w in warnings[:12]],
-                        widths=[24 * mm, 138 * mm], wrap_last=True,
+                        widths=[24 * mm, 138 * mm],
+                        wrap_last=True,
                     ),
                 ]
 
             recommendations = quality.get("recommendations") or []
             if recommendations:
                 story += [
-                    Spacer(1, 6 * mm), Paragraph("Recommended actions", styles["h3"]),
+                    Spacer(1, 6 * mm),
+                    Paragraph("Recommended actions", styles["h3"]),
                     self._table(
                         ["Action", "Why it matters"],
                         [[r["action"], r["why"]] for r in recommendations[:8]],
-                        widths=[56 * mm, 106 * mm], wrap_last=True,
+                        widths=[56 * mm, 106 * mm],
+                        wrap_last=True,
                     ),
                 ]
 
             dictionary = quality.get("data_dictionary") or []
             if dictionary:
                 story += [
-                    PageBreak(), Paragraph("Data dictionary", styles["h2"]),
+                    PageBreak(),
+                    Paragraph("Data dictionary", styles["h2"]),
                     self._table(
                         ["Column", "Type", "Non-null", "Missing %", "Distinct"],
                         [
                             [
-                                d["column"], d["semantic_type"], f"{d['non_null_count']:,}",
-                                f"{d['missing_pct']}%", f"{d['unique_count']:,}",
+                                d["column"],
+                                d["semantic_type"],
+                                f"{d['non_null_count']:,}",
+                                f"{d['missing_pct']}%",
+                                f"{d['unique_count']:,}",
                             ]
                             for d in dictionary[:45]
                         ],
@@ -217,28 +274,41 @@ class ReportService:
                 ]
                 if len(dictionary) > 45:
                     story.append(
-                        Paragraph(f"Showing 45 of {len(dictionary)} columns.", styles["muted"])
+                        Paragraph(
+                            f"Showing 45 of {len(dictionary)} columns.", styles["muted"]
+                        )
                     )
 
         # --- analytics ---------------------------------------------------
         dashboard = data.get("dashboard")
         if dashboard and dashboard.get("kpis"):
             story += [PageBreak(), Paragraph("Key metrics", styles["h2"])]
-            story.append(self._table(
-                ["Metric", "Value"],
-                [[k["label"], self._fmt_number(k["value"])] for k in dashboard["kpis"]],
-                widths=[100 * mm, 62 * mm],
-            ))
+            story.append(
+                self._table(
+                    ["Metric", "Value"],
+                    [
+                        [k["label"], self._fmt_number(k["value"])]
+                        for k in dashboard["kpis"]
+                    ],
+                    widths=[100 * mm, 62 * mm],
+                )
+            )
             for insight in dashboard.get("insights") or []:
                 story += [Spacer(1, 3 * mm), Paragraph(insight, styles["body"])]
 
             if dashboard.get("category_breakdown"):
                 story += [
                     Spacer(1, 6 * mm),
-                    Paragraph(f"Top values by {dashboard.get('category_column')}", styles["h3"]),
+                    Paragraph(
+                        f"Top values by {dashboard.get('category_column')}",
+                        styles["h3"],
+                    ),
                     self._table(
                         ["Category", "Count"],
-                        [[c["category"], f"{c['count']:,}"] for c in dashboard["category_breakdown"][:10]],
+                        [
+                            [c["category"], f"{c['count']:,}"]
+                            for c in dashboard["category_breakdown"][:10]
+                        ],
                         widths=[110 * mm, 52 * mm],
                     ),
                 ]
@@ -259,7 +329,10 @@ class ReportService:
                 Spacer(1, 4 * mm),
                 self._table(
                     ["Metric", "Value"],
-                    [[self._metric_label(k), self._fmt_number(v)] for k, v in (model["metrics"] or {}).items()],
+                    [
+                        [self._metric_label(k), self._fmt_number(v)]
+                        for k, v in (model["metrics"] or {}).items()
+                    ],
                     widths=[100 * mm, 62 * mm],
                 ),
             ]
@@ -267,7 +340,8 @@ class ReportService:
             leaderboard = model.get("leaderboard") or []
             if leaderboard:
                 story += [
-                    Spacer(1, 6 * mm), Paragraph("Model comparison", styles["h3"]),
+                    Spacer(1, 6 * mm),
+                    Paragraph("Model comparison", styles["h3"]),
                     self._table(
                         ["Model", "Score", "Cross-validated", "Tuned"],
                         [
@@ -299,7 +373,8 @@ class ReportService:
                     f"Method used: <b>{explanation['method_label']}</b>"
                     + (
                         f". SHAP was not available for this model type: {explanation['fallback_reason']}."
-                        if explanation.get("fallback_used") and explanation.get("fallback_reason")
+                        if explanation.get("fallback_used")
+                        and explanation.get("fallback_reason")
                         else "."
                     ),
                     styles["body"],
@@ -319,8 +394,12 @@ class ReportService:
 
         # --- limitations -------------------------------------------------
         story += [
-            PageBreak(), Paragraph("Limitations and caveats", styles["h2"]),
-            *[Paragraph(f"&bull; {note}", styles["body"]) for note in self._caveats(data)],
+            PageBreak(),
+            Paragraph("Limitations and caveats", styles["h2"]),
+            *[
+                Paragraph(f"&bull; {note}", styles["body"])
+                for note in self._caveats(data)
+            ],
         ]
 
         doc.build(story, onLaterPages=self._footer, onFirstPage=self._footer)
@@ -334,9 +413,12 @@ class ReportService:
         explanation = data.get("explanation")
 
         if not quality:
-            return [Paragraph(
-                "This dataset could not be analysed. " + " ".join(data["notes"]), styles["body"]
-            )]
+            return [
+                Paragraph(
+                    "This dataset could not be analysed. " + " ".join(data["notes"]),
+                    styles["body"],
+                )
+            ]
 
         summary = quality["summary"]
         parts = [
@@ -370,9 +452,12 @@ class ReportService:
         if recommendations:
             out += [
                 Spacer(1, 3 * mm),
-                Paragraph("<b>Suggested next steps:</b> " + "; ".join(
-                    r["action"] for r in recommendations[:3]
-                ) + ".", styles["body"]),
+                Paragraph(
+                    "<b>Suggested next steps:</b> "
+                    + "; ".join(r["action"] for r in recommendations[:3])
+                    + ".",
+                    styles["body"],
+                ),
             ]
         return out
 
@@ -380,7 +465,10 @@ class ReportService:
     def _headline_metric(model: dict[str, Any]) -> tuple[str, str]:
         metrics = model.get("metrics") or {}
         if model.get("task_type") == "classification":
-            for key, label in (("f1", "a weighted F1 score"), ("accuracy", "an accuracy")):
+            for key, label in (
+                ("f1", "a weighted F1 score"),
+                ("accuracy", "an accuracy"),
+            ):
                 if metrics.get(key) is not None:
                     return label, f"{metrics[key]:.3f}"
         else:
@@ -393,10 +481,14 @@ class ReportService:
     @staticmethod
     def _metric_label(key: str) -> str:
         return {
-            "r2": "R² (variance explained)", "mae": "Mean absolute error",
-            "rmse": "Root mean squared error", "mape": "Mean absolute percentage error (%)",
-            "f1": "F1 score (weighted)", "accuracy": "Accuracy",
-            "precision": "Precision (weighted)", "recall": "Recall (weighted)",
+            "r2": "R² (variance explained)",
+            "mae": "Mean absolute error",
+            "rmse": "Root mean squared error",
+            "mape": "Mean absolute percentage error (%)",
+            "f1": "F1 score (weighted)",
+            "accuracy": "Accuracy",
+            "precision": "Precision (weighted)",
+            "recall": "Recall (weighted)",
             "roc_auc": "ROC-AUC",
         }.get(key, key.replace("_", " ").title())
 
@@ -408,7 +500,9 @@ class ReportService:
             "None of them establish causation."
         )
         if data.get("sampled"):
-            out.append("Figures were computed on a random sample, so exact totals may differ.")
+            out.append(
+                "Figures were computed on a random sample, so exact totals may differ."
+            )
         if data.get("model"):
             out.append(
                 "Model metrics are measured on a held-out test split of this dataset. "
@@ -426,15 +520,21 @@ class ReportService:
         """Log the generated report. The PDF streams to the client rather than
         being stored server-side, so file_path stays null."""
         try:
-            self.db.add(models.ReportRecord(
-                dataset_id=dataset.id, user_id=user_id, format="pdf", file_path=None
-            ))
+            self.db.add(
+                models.ReportRecord(
+                    dataset_id=dataset.id, user_id=user_id, format="pdf", file_path=None
+                )
+            )
             self.db.commit()
         except Exception as exc:  # noqa: BLE001 - never fail a download over history
-            logger.warning("Could not record report history for dataset %s: %s", dataset.id, exc)
+            logger.warning(
+                "Could not record report history for dataset %s: %s", dataset.id, exc
+            )
             self.db.rollback()
 
-    def report_history(self, dataset_id: int, user_id: int) -> list[models.ReportRecord]:
+    def report_history(
+        self, dataset_id: int, user_id: int
+    ) -> list[models.ReportRecord]:
         return (
             self.db.query(models.ReportRecord)
             .filter(
@@ -451,55 +551,100 @@ class ReportService:
         base = getSampleStyleSheet()
         return {
             "brand": ParagraphStyle(
-                "brand", parent=base["Normal"], fontName="Helvetica-Bold",
-                fontSize=10, textColor=BRAND, spaceAfter=2, alignment=TA_LEFT,
+                "brand",
+                parent=base["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                textColor=BRAND,
+                spaceAfter=2,
+                alignment=TA_LEFT,
             ),
             "h1": ParagraphStyle(
-                "h1", parent=base["Title"], fontName="Helvetica-Bold",
-                fontSize=22, textColor=INK, spaceAfter=4, alignment=TA_LEFT, leading=26,
+                "h1",
+                parent=base["Title"],
+                fontName="Helvetica-Bold",
+                fontSize=22,
+                textColor=INK,
+                spaceAfter=4,
+                alignment=TA_LEFT,
+                leading=26,
             ),
             "h2": ParagraphStyle(
-                "h2", parent=base["Heading1"], fontName="Helvetica-Bold",
-                fontSize=14, textColor=INK, spaceBefore=2, spaceAfter=6,
+                "h2",
+                parent=base["Heading1"],
+                fontName="Helvetica-Bold",
+                fontSize=14,
+                textColor=INK,
+                spaceBefore=2,
+                spaceAfter=6,
             ),
             "h3": ParagraphStyle(
-                "h3", parent=base["Heading2"], fontName="Helvetica-Bold",
-                fontSize=11, textColor=INK, spaceBefore=2, spaceAfter=4,
+                "h3",
+                parent=base["Heading2"],
+                fontName="Helvetica-Bold",
+                fontSize=11,
+                textColor=INK,
+                spaceBefore=2,
+                spaceAfter=4,
             ),
             "body": ParagraphStyle(
-                "body", parent=base["Normal"], fontSize=9.5, leading=14,
-                textColor=INK, spaceAfter=4,
+                "body",
+                parent=base["Normal"],
+                fontSize=9.5,
+                leading=14,
+                textColor=INK,
+                spaceAfter=4,
             ),
             "muted": ParagraphStyle(
-                "muted", parent=base["Normal"], fontSize=8, leading=11, textColor=MUTED,
+                "muted",
+                parent=base["Normal"],
+                fontSize=8,
+                leading=11,
+                textColor=MUTED,
             ),
             "cell": ParagraphStyle(
-                "cell", parent=base["Normal"], fontSize=8.5, leading=11, textColor=INK,
+                "cell",
+                parent=base["Normal"],
+                fontSize=8.5,
+                leading=11,
+                textColor=INK,
             ),
             "callout": ParagraphStyle(
-                "callout", parent=base["Normal"], fontSize=8.5, leading=12,
-                textColor=MUTED, borderPadding=6, backColor=BAND,
+                "callout",
+                parent=base["Normal"],
+                fontSize=8.5,
+                leading=12,
+                textColor=MUTED,
+                borderPadding=6,
+                backColor=BAND,
             ),
         }
 
     def _kv_table(self, rows: list[tuple[str, str]]) -> Table:
         table = Table([[k, v] for k, v in rows], colWidths=[46 * mm, 116 * mm])
-        table.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("TEXTCOLOR", (0, 0), (0, -1), MUTED),
-            ("TEXTCOLOR", (1, 0), (1, -1), INK),
-            ("LINEBELOW", (0, 0), (-1, -2), 0.4, RULE),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ]))
+        table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("TEXTCOLOR", (0, 0), (0, -1), MUTED),
+                    ("TEXTCOLOR", (1, 0), (1, -1), INK),
+                    ("LINEBELOW", (0, 0), (-1, -2), 0.4, RULE),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
         return table
 
     def _table(
-        self, header: list[str], rows: list[list[str]],
-        widths: list[float] | None = None, wrap_last: bool = False,
+        self,
+        header: list[str],
+        rows: list[list[str]],
+        widths: list[float] | None = None,
+        wrap_last: bool = False,
     ) -> Table:
         """A table with a header that repeats across page breaks.
 
@@ -515,18 +660,22 @@ class ReportService:
             body.append(cells)
 
         table = Table([header] + body, colWidths=widths, repeatRows=1)
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), INK),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("GRID", (0, 0), (-1, -1), 0.3, RULE),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BAND]),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ]))
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), INK),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                    ("GRID", (0, 0), (-1, -1), 0.3, RULE),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BAND]),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
         return table
 
     @staticmethod
@@ -556,7 +705,11 @@ class ReportService:
         if isinstance(value, (int,)) and not isinstance(value, bool):
             return f"{value:,}"
         if isinstance(value, float):
-            return f"{value:,.4f}".rstrip("0").rstrip(".") if abs(value) < 1000 else f"{value:,.2f}"
+            return (
+                f"{value:,.4f}".rstrip("0").rstrip(".")
+                if abs(value) < 1000
+                else f"{value:,.2f}"
+            )
         return str(value)
 
     @staticmethod

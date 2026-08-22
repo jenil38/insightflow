@@ -5,6 +5,7 @@ DATABASE_URL now comes from the centralized `settings` object (core/config.py)
 instead of reading the env var directly here - same default as before
 (sqlite:///./insightflow.db), so nothing changes for existing setups.
 """
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -22,6 +23,7 @@ Base = declarative_base()
 # pragma is turned on per-connection. Postgres enforces them natively, so this
 # is a no-op there.
 if DATABASE_URL.startswith("sqlite"):
+
     @event.listens_for(Engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()

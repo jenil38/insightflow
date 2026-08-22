@@ -6,6 +6,7 @@ original code (`{"detail": "..."}`, which is what the existing frontend's
 axios error handling expects), while adding an `error_code` field that new
 frontend code can rely on going forward.
 """
+
 import logging
 import traceback
 import uuid
@@ -22,9 +23,10 @@ logger = logging.getLogger("insightflow.errors")
 # warning on import. Reading the new name with a fallback keeps the app quiet on
 # current Starlette while still importing on the older version pinned in
 # requirements.txt. The wire status code is 422 either way.
-HTTP_422 = getattr(
-    status, "HTTP_422_UNPROCESSABLE_CONTENT", None
-) or status.HTTP_422_UNPROCESSABLE_ENTITY
+HTTP_422 = (
+    getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", None)
+    or status.HTTP_422_UNPROCESSABLE_ENTITY
+)
 
 
 class AppException(Exception):
@@ -33,7 +35,9 @@ class AppException(Exception):
     status_code = status.HTTP_400_BAD_REQUEST
     error_code = "app_error"
 
-    def __init__(self, detail: str, error_code: str | None = None, status_code: int | None = None):
+    def __init__(
+        self, detail: str, error_code: str | None = None, status_code: int | None = None
+    ):
         self.detail = detail
         if error_code:
             self.error_code = error_code
@@ -72,7 +76,9 @@ class RateLimitedError(AppException):
     error_code = "rate_limited"
 
 
-def _error_response(status_code: int, detail, error_code: str, request_id: str) -> JSONResponse:
+def _error_response(
+    status_code: int, detail, error_code: str, request_id: str
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"detail": detail, "error_code": error_code, "request_id": request_id},
@@ -84,7 +90,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException):
         request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-        logger.warning("AppException: %s (%s)", exc.detail, exc.error_code, extra={"request_id": request_id})
+        logger.warning(
+            "AppException: %s (%s)",
+            exc.detail,
+            exc.error_code,
+            extra={"request_id": request_id},
+        )
         return _error_response(exc.status_code, exc.detail, exc.error_code, request_id)
 
     @app.exception_handler(StarletteHTTPException)
@@ -95,7 +106,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _error_response(exc.status_code, exc.detail, "http_error", request_id)
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
         request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
         return _error_response(
             HTTP_422,

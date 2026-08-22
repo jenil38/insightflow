@@ -2,6 +2,7 @@
 Report routes. PDF generation lives in services/report_service.py, which reads
 persisted analysis and model results instead of retraining.
 """
+
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
@@ -29,7 +30,9 @@ def generate_report(
     )
 
 
-@router.get("/{dataset_id}/report/history", response_model=list[schemas.ReportRecordOut])
+@router.get(
+    "/{dataset_id}/report/history", response_model=list[schemas.ReportRecordOut]
+)
 def report_history(
     dataset: models.Dataset = Depends(get_owned_dataset),
     db: Session = Depends(get_db),

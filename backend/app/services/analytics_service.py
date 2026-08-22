@@ -7,6 +7,7 @@ chart builder - the user chooses measure, aggregation, dimension, date column,
 time grain, top-N and chart type, and the server validates that the combination
 is statistically sensible before computing it.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -18,7 +19,10 @@ from ..core.exceptions import ValidationAppError
 from ..core.serialization import safe_float, to_jsonable
 from ..schemas import AnalyticsQuery
 from .profiling_service import (
-    detect_datetime_columns, guess_target_column, infer_semantic_type, numeric_histogram,
+    detect_datetime_columns,
+    guess_target_column,
+    infer_semantic_type,
+    numeric_histogram,
 )
 
 GRAIN_FREQ = {"day": "D", "week": "W", "month": "M", "quarter": "Q", "year": "Y"}
@@ -43,8 +47,10 @@ class AnalyticsService:
 
         target_col, _ = guess_target_column(df)
         categorical_cols = [
-            c for c in df.columns
-            if infer_semantic_type(df[c]) in ("categorical", "boolean") and c != date_col
+            c
+            for c in df.columns
+            if infer_semantic_type(df[c]) in ("categorical", "boolean")
+            and c != date_col
         ]
 
         kpis: list[dict[str, Any]] = []
@@ -53,7 +59,10 @@ class AnalyticsService:
             if not series.empty:
                 kpis += [
                     {"label": f"Total {target_col}", "value": safe_num(series.sum())},
-                    {"label": f"Average {target_col}", "value": safe_num(series.mean())},
+                    {
+                        "label": f"Average {target_col}",
+                        "value": safe_num(series.mean()),
+                    },
                     {"label": f"Max {target_col}", "value": safe_num(series.max())},
                 ]
         kpis = [k for k in kpis if k["value"] is not None]
@@ -61,7 +70,9 @@ class AnalyticsService:
 
         time_series: list[dict[str, Any]] = []
         if date_col and target_col and target_col in numeric_cols:
-            time_series = self._time_series(df, date_col, target_col, "sum", "month")[:24]
+            time_series = self._time_series(df, date_col, target_col, "sum", "month")[
+                :24
+            ]
 
         category_breakdown: list[dict[str, Any]] = []
         category_column = categorical_cols[0] if categorical_cols else None
@@ -76,24 +87,27 @@ class AnalyticsService:
             series = pd.to_numeric(df[target_col], errors="coerce").dropna()
             if not series.empty:
                 histogram = [
-                    {"bin": h["bin"], "count": h["count"]} for h in numeric_histogram(series, bins=10)
+                    {"bin": h["bin"], "count": h["count"]}
+                    for h in numeric_histogram(series, bins=10)
                 ]
 
-        return to_jsonable({
-            "kpis": kpis,
-            "target_column": target_col,
-            "date_column": date_col,
-            "category_column": category_column,
-            "time_series": time_series,
-            "category_breakdown": category_breakdown,
-            "histogram": histogram,
-            "available": {
-                "numeric_columns": [str(c) for c in numeric_cols],
-                "categorical_columns": [str(c) for c in categorical_cols],
-                "date_columns": [str(c) for c in date_cols],
-            },
-            "insights": self._insights(df, target_col, category_column, date_col),
-        })
+        return to_jsonable(
+            {
+                "kpis": kpis,
+                "target_column": target_col,
+                "date_column": date_col,
+                "category_column": category_column,
+                "time_series": time_series,
+                "category_breakdown": category_breakdown,
+                "histogram": histogram,
+                "available": {
+                    "numeric_columns": [str(c) for c in numeric_cols],
+                    "categorical_columns": [str(c) for c in categorical_cols],
+                    "date_columns": [str(c) for c in date_cols],
+                },
+                "insights": self._insights(df, target_col, category_column, date_col),
+            }
+        )
 
     # ------------------------------------------------------------- queries
     def run_query(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
@@ -178,34 +192,45 @@ class AnalyticsService:
             return safe_float(series.notna().sum(), 2)
         numeric = pd.to_numeric(series, errors="coerce")
         func = {
-            "sum": numeric.sum, "avg": numeric.mean, "min": numeric.min,
-            "max": numeric.max, "median": numeric.median,
+            "sum": numeric.sum,
+            "avg": numeric.mean,
+            "min": numeric.min,
+            "max": numeric.max,
+            "median": numeric.median,
         }[aggregation]
         return safe_float(func(), 2)
 
     def _kpi(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
         column = query.measure or df.columns[0]
         value = self._aggregate(df[column], query.aggregation)
-        return to_jsonable({
-            "chart_type": "kpi",
-            "label": f"{query.aggregation.title()} of {column}" if query.aggregation != "count" else f"Count of {column}",
-            "value": value,
-            "rows_considered": int(len(df)),
-        })
+        return to_jsonable(
+            {
+                "chart_type": "kpi",
+                "label": f"{query.aggregation.title()} of {column}"
+                if query.aggregation != "count"
+                else f"Count of {column}",
+                "value": value,
+                "rows_considered": int(len(df)),
+            }
+        )
 
     def _histogram(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
         series = pd.to_numeric(df[query.measure], errors="coerce").dropna()
-        return to_jsonable({
-            "chart_type": "histogram",
-            "measure": query.measure,
-            "data": numeric_histogram(series, bins=min(query.top_n, 30)),
-            "rows_considered": int(len(series)),
-        })
+        return to_jsonable(
+            {
+                "chart_type": "histogram",
+                "measure": query.measure,
+                "data": numeric_histogram(series, bins=min(query.top_n, 30)),
+                "rows_considered": int(len(series)),
+            }
+        )
 
     def _scatter(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
-        pair = df[[query.measure, query.secondary_measure]].apply(
-            pd.to_numeric, errors="coerce"
-        ).dropna()
+        pair = (
+            df[[query.measure, query.secondary_measure]]
+            .apply(pd.to_numeric, errors="coerce")
+            .dropna()
+        )
         # Downsample: a scatter of 100k points is unreadable and slow to render.
         limit = 2000
         sampled = len(pair) > limit
@@ -213,26 +238,39 @@ class AnalyticsService:
             pair = pair.sample(limit, random_state=42)
         correlation = None
         if len(pair) >= 3:
-            correlation = safe_float(pair[query.measure].corr(pair[query.secondary_measure]), 3)
-        return to_jsonable({
-            "chart_type": "scatter",
-            "x": query.measure,
-            "y": query.secondary_measure,
-            "data": [
-                {"x": safe_float(a, 4), "y": safe_float(b, 4)}
-                for a, b in zip(pair[query.measure], pair[query.secondary_measure])
-            ],
-            "correlation": correlation,
-            "sampled": sampled,
-            "rows_considered": int(len(pair)),
-        })
+            correlation = safe_float(
+                pair[query.measure].corr(pair[query.secondary_measure]), 3
+            )
+        return to_jsonable(
+            {
+                "chart_type": "scatter",
+                "x": query.measure,
+                "y": query.secondary_measure,
+                "data": [
+                    {"x": safe_float(a, 4), "y": safe_float(b, 4)}
+                    for a, b in zip(pair[query.measure], pair[query.secondary_measure])
+                ],
+                "correlation": correlation,
+                "sampled": sampled,
+                "rows_considered": int(len(pair)),
+            }
+        )
 
     def _time_series(
-        self, df: pd.DataFrame, date_column: str, measure: str | None, aggregation: str, grain: str
+        self,
+        df: pd.DataFrame,
+        date_column: str,
+        measure: str | None,
+        aggregation: str,
+        grain: str,
     ) -> list[dict[str, Any]]:
-        columns = [date_column] + ([measure] if measure and measure != date_column else [])
+        columns = [date_column] + (
+            [measure] if measure and measure != date_column else []
+        )
         work = df[columns].copy()
-        work[date_column] = pd.to_datetime(work[date_column], errors="coerce", format="mixed")
+        work[date_column] = pd.to_datetime(
+            work[date_column], errors="coerce", format="mixed"
+        )
         work = work.dropna(subset=[date_column]).sort_values(date_column)
         if work.empty:
             return []
@@ -243,7 +281,13 @@ class AnalyticsService:
         else:
             numeric = pd.to_numeric(work[measure], errors="coerce")
             grouped = numeric.groupby(periods).agg(
-                {"sum": "sum", "avg": "mean", "min": "min", "max": "max", "median": "median"}[aggregation]
+                {
+                    "sum": "sum",
+                    "avg": "mean",
+                    "min": "min",
+                    "max": "max",
+                    "median": "median",
+                }[aggregation]
             )
         out = [
             {"period": str(period), "value": safe_float(value, 2)}
@@ -251,19 +295,23 @@ class AnalyticsService:
         ]
         return [row for row in out if row["value"] is not None]
 
-    def _timeseries_result(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
+    def _timeseries_result(
+        self, df: pd.DataFrame, query: AnalyticsQuery
+    ) -> dict[str, Any]:
         data = self._time_series(
             df, query.date_column, query.measure, query.aggregation, query.time_grain
         )
-        return to_jsonable({
-            "chart_type": query.chart_type,
-            "date_column": query.date_column,
-            "measure": query.measure,
-            "aggregation": query.aggregation,
-            "time_grain": query.time_grain,
-            "data": data,
-            "points": len(data),
-        })
+        return to_jsonable(
+            {
+                "chart_type": query.chart_type,
+                "date_column": query.date_column,
+                "measure": query.measure,
+                "aggregation": query.aggregation,
+                "time_grain": query.time_grain,
+                "data": data,
+                "points": len(data),
+            }
+        )
 
     def _grouped(self, df: pd.DataFrame, query: AnalyticsQuery) -> dict[str, Any]:
         if not query.dimension:
@@ -278,29 +326,38 @@ class AnalyticsService:
         else:
             numeric = pd.to_numeric(df[query.measure], errors="coerce")
             grouped = numeric.groupby(df[query.dimension].astype(str)).agg(
-                {"sum": "sum", "avg": "mean", "min": "min", "max": "max", "median": "median"}[query.aggregation]
+                {
+                    "sum": "sum",
+                    "avg": "mean",
+                    "min": "min",
+                    "max": "max",
+                    "median": "median",
+                }[query.aggregation]
             )
 
         grouped = grouped.sort_values(ascending=False)
         top = grouped.head(query.top_n)
         rows = [
             {"category": str(k), "value": safe_float(v, 2)}
-            for k, v in top.items() if safe_float(v, 2) is not None
+            for k, v in top.items()
+            if safe_float(v, 2) is not None
         ]
         other_count = max(0, len(grouped) - len(top))
-        return to_jsonable({
-            "chart_type": query.chart_type,
-            "dimension": query.dimension,
-            "measure": query.measure,
-            "aggregation": query.aggregation,
-            "data": rows,
-            "categories_shown": len(rows),
-            "categories_hidden": other_count,
-            "bottom": [
-                {"category": str(k), "value": safe_float(v, 2)}
-                for k, v in grouped.tail(min(5, len(grouped))).items()
-            ],
-        })
+        return to_jsonable(
+            {
+                "chart_type": query.chart_type,
+                "dimension": query.dimension,
+                "measure": query.measure,
+                "aggregation": query.aggregation,
+                "data": rows,
+                "categories_shown": len(rows),
+                "categories_hidden": other_count,
+                "bottom": [
+                    {"category": str(k), "value": safe_float(v, 2)}
+                    for k, v in grouped.tail(min(5, len(grouped))).items()
+                ],
+            }
+        )
 
     # ------------------------------------------------------------ insights
     @staticmethod
@@ -309,7 +366,9 @@ class AnalyticsService:
     ) -> list[str]:
         """Plain-language observations, each computed rather than asserted."""
         out: list[str] = []
-        if target and pd.api.types.is_numeric_dtype(df.get(target, pd.Series(dtype=float))):
+        if target and pd.api.types.is_numeric_dtype(
+            df.get(target, pd.Series(dtype=float))
+        ):
             series = pd.to_numeric(df[target], errors="coerce").dropna()
             if not series.empty:
                 out.append(
@@ -317,17 +376,24 @@ class AnalyticsService:
                     f"ranging from {safe_float(series.min(), 2)} to {safe_float(series.max(), 2)}."
                 )
                 if category and category in df.columns:
-                    by_cat = pd.to_numeric(df[target], errors="coerce").groupby(
-                        df[category].astype(str)
-                    ).sum().sort_values(ascending=False)
+                    by_cat = (
+                        pd.to_numeric(df[target], errors="coerce")
+                        .groupby(df[category].astype(str))
+                        .sum()
+                        .sort_values(ascending=False)
+                    )
                     if len(by_cat) >= 2:
-                        top_share = by_cat.iloc[0] / by_cat.sum() * 100 if by_cat.sum() else 0
+                        top_share = (
+                            by_cat.iloc[0] / by_cat.sum() * 100 if by_cat.sum() else 0
+                        )
                         out.append(
                             f"{by_cat.index[0]} is the largest {category} by total {target}, "
                             f"accounting for {safe_float(top_share, 1)}% of the total."
                         )
         if date_col:
-            parsed = pd.to_datetime(df[date_col], errors="coerce", format="mixed").dropna()
+            parsed = pd.to_datetime(
+                df[date_col], errors="coerce", format="mixed"
+            ).dropna()
             if not parsed.empty:
                 out.append(
                     f"The data spans {parsed.min().date()} to {parsed.max().date()} "

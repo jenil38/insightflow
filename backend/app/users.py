@@ -4,6 +4,7 @@ User-scoped routes.
 `/users/me/summary` exists specifically so the home dashboard never has to read
 the global `/metrics` endpoint, whose totals belong to all users combined.
 """
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

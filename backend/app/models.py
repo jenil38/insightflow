@@ -12,6 +12,7 @@ Phase 1/3 additions on top of the original schema:
 - History tables for model training runs, chat messages, and reports
   (analysis history piggybacks on the Dataset row's own audit fields).
 """
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -43,19 +44,33 @@ class User(Base):
     reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    datasets = relationship("Dataset", back_populates="owner", cascade="all, delete-orphan")
-    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
-    model_runs = relationship("ModelRun", back_populates="user", cascade="all, delete-orphan")
-    chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
-    reports = relationship("ReportRecord", back_populates="user", cascade="all, delete-orphan")
-    dashboard_layouts = relationship("DashboardLayout", back_populates="user", cascade="all, delete-orphan")
+    datasets = relationship(
+        "Dataset", back_populates="owner", cascade="all, delete-orphan"
+    )
+    refresh_tokens = relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan"
+    )
+    model_runs = relationship(
+        "ModelRun", back_populates="user", cascade="all, delete-orphan"
+    )
+    chat_messages = relationship(
+        "ChatMessage", back_populates="user", cascade="all, delete-orphan"
+    )
+    reports = relationship(
+        "ReportRecord", back_populates="user", cascade="all, delete-orphan"
+    )
+    dashboard_layouts = relationship(
+        "DashboardLayout", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     token_hash = Column(String, unique=True, index=True, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked = Column(Boolean, default=False, nullable=False)
@@ -70,7 +85,9 @@ class Dataset(Base):
     __tablename__ = "datasets"
 
     id = Column(Integer, primary_key=True, index=True)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     filename = Column(String, nullable=False)
     original_filename = Column(String, nullable=True)
     stored_path = Column(String, nullable=False)
@@ -82,15 +99,25 @@ class Dataset(Base):
     schema_info = Column(JSON, nullable=True)
     processing_status = Column(String, nullable=True, default="ready")
     version = Column(Integer, nullable=True, default=1)
-    parent_dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    parent_dataset_id = Column(
+        Integer, ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True
+    )
     cleaning_log = Column(JSON, nullable=True)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     owner = relationship("User", back_populates="datasets")
-    model_runs = relationship("ModelRun", back_populates="dataset", cascade="all, delete-orphan")
-    chat_messages = relationship("ChatMessage", back_populates="dataset", cascade="all, delete-orphan")
-    reports = relationship("ReportRecord", back_populates="dataset", cascade="all, delete-orphan")
-    dashboard_layouts = relationship("DashboardLayout", back_populates="dataset", cascade="all, delete-orphan")
+    model_runs = relationship(
+        "ModelRun", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    chat_messages = relationship(
+        "ChatMessage", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    reports = relationship(
+        "ReportRecord", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    dashboard_layouts = relationship(
+        "DashboardLayout", back_populates="dataset", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (Index("ix_datasets_owner_uploaded", "owner_id", "uploaded_at"),)
 
@@ -107,8 +134,15 @@ class ModelRun(Base):
     __tablename__ = "model_runs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     target_column = Column(String, nullable=True)
     task_type = Column(String, nullable=True)  # "classification" | "regression"
     best_model_name = Column(String, nullable=True)
@@ -136,8 +170,15 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     role = Column(String, nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
@@ -157,18 +198,29 @@ class DashboardLayout(Base):
     __tablename__ = "dashboard_layouts"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String, nullable=False)
     charts = Column(JSON, nullable=False, default=list)
     is_default = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     user = relationship("User", back_populates="dashboard_layouts")
     dataset = relationship("Dataset", back_populates="dashboard_layouts")
 
-    __table_args__ = (Index("ix_dashboard_layouts_dataset_user", "dataset_id", "user_id"),)
+    __table_args__ = (
+        Index("ix_dashboard_layouts_dataset_user", "dataset_id", "user_id"),
+    )
 
 
 class ReportRecord(Base):
@@ -177,8 +229,15 @@ class ReportRecord(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     format = Column(String, nullable=False)  # "pdf" | "docx" | "xlsx" | "html"
     file_path = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

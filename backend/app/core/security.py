@@ -8,6 +8,7 @@ DB so they can be individually revoked on logout - this is what makes
 "logout" and "refresh" actually work, rather than just relying on the
 access token's natural expiry.
 """
+
 import hashlib
 import re
 import secrets
@@ -58,6 +59,7 @@ def validate_password_complexity(password: str) -> None:
 # Access tokens (JWT, short-lived)
 # --------------------------------------------------------------------------
 
+
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -68,7 +70,9 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+        )
         if payload.get("type") != "access":
             raise AuthError("Invalid token type", error_code="invalid_token")
         return payload
@@ -80,11 +84,14 @@ def decode_access_token(token: str) -> dict:
 # Refresh tokens (opaque random string, stored hashed in DB, revocable)
 # --------------------------------------------------------------------------
 
+
 def generate_refresh_token() -> tuple[str, str, datetime]:
     """Returns (raw_token_to_send_to_client, hashed_token_to_store, expires_at)."""
     raw = secrets.token_urlsafe(48)
     hashed = hash_refresh_token(raw)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     return raw, hashed, expires_at
 
 

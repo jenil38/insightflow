@@ -1,7 +1,9 @@
 import io
 
 
-def _upload_csv(client, headers, name="data.csv", content=b"a,b,target\n1,2,3\n4,5,6\n"):
+def _upload_csv(
+    client, headers, name="data.csv", content=b"a,b,target\n1,2,3\n4,5,6\n"
+):
     return client.post(
         "/datasets/upload",
         headers=headers,
@@ -42,7 +44,10 @@ def test_upload_rejects_empty_file(client, auth_headers):
 
 
 def test_upload_requires_auth(client):
-    r = client.post("/datasets/upload", files={"file": ("data.csv", io.BytesIO(b"a,b\n1,2\n"), "text/csv")})
+    r = client.post(
+        "/datasets/upload",
+        files={"file": ("data.csv", io.BytesIO(b"a,b\n1,2\n"), "text/csv")},
+    )
     assert r.status_code == 401
 
 
@@ -94,8 +99,13 @@ def test_dataset_isolated_between_users(client, auth_headers):
     headers, _ = auth_headers
     _upload_csv(client, headers)
 
-    client.post("/auth/register", json={"email": "other@example.com", "password": "StrongPass1!"})
-    r = client.post("/auth/login", json={"email": "other@example.com", "password": "StrongPass1!"})
+    client.post(
+        "/auth/register",
+        json={"email": "other@example.com", "password": "StrongPass1!"},
+    )
+    r = client.post(
+        "/auth/login", json={"email": "other@example.com", "password": "StrongPass1!"}
+    )
     other_headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
 
     r2 = client.get("/datasets", headers=other_headers)

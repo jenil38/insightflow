@@ -4,6 +4,7 @@ endpoint, and saved dashboard layouts.
 
 `build_dashboard` and `safe_num` are re-exported for backward compatibility.
 """
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -55,7 +56,10 @@ def run_analytics_query(
 # Saved dashboard layouts
 # ---------------------------------------------------------------------------
 
-@router.get("/{dataset_id}/dashboard-layouts", response_model=list[schemas.DashboardLayoutOut])
+
+@router.get(
+    "/{dataset_id}/dashboard-layouts", response_model=list[schemas.DashboardLayoutOut]
+)
 def list_layouts(
     dataset: models.Dataset = Depends(get_owned_dataset),
     db: Session = Depends(get_db),
@@ -67,7 +71,10 @@ def list_layouts(
             models.DashboardLayout.dataset_id == dataset.id,
             models.DashboardLayout.user_id == current_user.id,
         )
-        .order_by(models.DashboardLayout.is_default.desc(), models.DashboardLayout.created_at.desc())
+        .order_by(
+            models.DashboardLayout.is_default.desc(),
+            models.DashboardLayout.created_at.desc(),
+        )
         .all()
     )
 
@@ -86,8 +93,11 @@ def create_layout(
     if body.is_default:
         _clear_default(db, dataset.id, current_user.id)
     layout = models.DashboardLayout(
-        dataset_id=dataset.id, user_id=current_user.id,
-        name=body.name, charts=body.charts, is_default=body.is_default,
+        dataset_id=dataset.id,
+        user_id=current_user.id,
+        name=body.name,
+        charts=body.charts,
+        is_default=body.is_default,
     )
     db.add(layout)
     db.commit()
@@ -95,7 +105,10 @@ def create_layout(
     return layout
 
 
-@router.put("/{dataset_id}/dashboard-layouts/{layout_id}", response_model=schemas.DashboardLayoutOut)
+@router.put(
+    "/{dataset_id}/dashboard-layouts/{layout_id}",
+    response_model=schemas.DashboardLayoutOut,
+)
 def update_layout(
     layout_id: int,
     body: schemas.DashboardLayoutIn,

@@ -2,6 +2,7 @@
 Data-quality scoring, configurable/reversible cleaning, the Copilot, and upload
 validation for malformed files.
 """
+
 import io
 
 import pytest
@@ -33,6 +34,7 @@ def messy_dataset(client, auth_headers):
 
 # ------------------------------------------------------------ data quality
 
+
 def test_quality_report_scores_are_explainable(client, messy_dataset):
     dataset_id, headers = messy_dataset
     r = client.get(f"/datasets/{dataset_id}/quality", headers=headers)
@@ -41,14 +43,21 @@ def test_quality_report_scores_are_explainable(client, messy_dataset):
 
     quality = body["quality"]
     for key in (
-        "overall_score", "completeness_score", "uniqueness_score",
-        "duplicate_score", "consistency_score",
+        "overall_score",
+        "completeness_score",
+        "uniqueness_score",
+        "duplicate_score",
+        "consistency_score",
     ):
         assert 0 <= quality[key] <= 100
 
     # Every score must ship the formula behind it - no unexplained "AI score".
     assert set(quality["score_definitions"]) >= {
-        "completeness", "uniqueness", "duplicates", "consistency", "overall"
+        "completeness",
+        "uniqueness",
+        "duplicates",
+        "consistency",
+        "overall",
     }
     assert quality["grade"] in {"excellent", "good", "fair", "poor"}
 
@@ -72,7 +81,9 @@ def test_quality_report_detects_the_real_problems(client, messy_dataset):
     assert "constant_columns" in codes
     assert body["quality"]["duplicate_rows"] == 1
 
-    constant_warning = next(w for w in body["warnings"] if w["code"] == "constant_columns")
+    constant_warning = next(
+        w for w in body["warnings"] if w["code"] == "constant_columns"
+    )
     assert "constant" in constant_warning["columns"]
 
     # Recommendations must be tied to findings, not generic advice.
@@ -83,6 +94,7 @@ def test_quality_report_detects_the_real_problems(client, messy_dataset):
 
 
 # ---------------------------------------------------------------- cleaning
+
 
 def test_cleaning_plan_explains_what_it_would_do(client, messy_dataset):
     dataset_id, headers = messy_dataset
@@ -117,7 +129,9 @@ def test_cleaning_preview_changes_nothing_on_disk(client, messy_dataset):
 def test_cleaning_apply_then_revert(client, messy_dataset):
     dataset_id, headers = messy_dataset
 
-    applied = client.post(f"/datasets/{dataset_id}/clean/apply", headers=headers, json={})
+    applied = client.post(
+        f"/datasets/{dataset_id}/clean/apply", headers=headers, json={}
+    )
     assert applied.status_code == 200
     assert applied.json()["after"]["rows"] == 5
 
@@ -137,7 +151,12 @@ def test_cleaning_apply_then_revert(client, messy_dataset):
     detail = client.get(f"/datasets/{dataset_id}", headers=headers).json()
     assert detail["has_cleaned_version"] is False
     # The original row count is intact - the upload was never modified.
-    assert client.get(f"/datasets/{dataset_id}/preview", headers=headers).json()["total_rows"] == 6
+    assert (
+        client.get(f"/datasets/{dataset_id}/preview", headers=headers).json()[
+            "total_rows"
+        ]
+        == 6
+    )
 
 
 def test_revert_without_cleaning_is_harmless(client, messy_dataset):
@@ -192,9 +211,13 @@ def test_legacy_clean_endpoint_keeps_its_response_keys(client, messy_dataset):
     dataset_id, headers = messy_dataset
     body = client.post(f"/datasets/{dataset_id}/clean", headers=headers, json={}).json()
     for key in (
-        "duplicates_removed", "missing_values_filled", "dates_corrected",
-        "categories_standardized", "text_columns_normalized",
-        "rows_after_cleaning", "columns_after_cleaning",
+        "duplicates_removed",
+        "missing_values_filled",
+        "dates_corrected",
+        "categories_standardized",
+        "text_columns_normalized",
+        "rows_after_cleaning",
+        "columns_after_cleaning",
     ):
         assert key in body, f"legacy key {key} disappeared"
     assert body["duplicates_removed"] == 1
@@ -202,11 +225,14 @@ def test_legacy_clean_endpoint_keeps_its_response_keys(client, messy_dataset):
 
 # ----------------------------------------------------------------- copilot
 
+
 def test_copilot_reports_configuration_state_honestly(client, messy_dataset):
     """With no GROQ_API_KEY the UI must be able to show a disabled state."""
     dataset_id, headers = messy_dataset
 
-    suggestions = client.get(f"/datasets/{dataset_id}/chat/suggestions", headers=headers)
+    suggestions = client.get(
+        f"/datasets/{dataset_id}/chat/suggestions", headers=headers
+    )
     assert suggestions.status_code == 200
     body = suggestions.json()
     assert body["copilot_enabled"] is False
@@ -219,7 +245,9 @@ def test_copilot_reports_configuration_state_honestly(client, messy_dataset):
 def test_copilot_ask_without_key_returns_actionable_error(client, messy_dataset):
     dataset_id, headers = messy_dataset
     r = client.post(
-        f"/datasets/{dataset_id}/chat", headers=headers, json={"question": "Summarise this"}
+        f"/datasets/{dataset_id}/chat",
+        headers=headers,
+        json={"question": "Summarise this"},
     )
     assert r.status_code == 503
     body = r.json()
@@ -239,7 +267,9 @@ def test_copilot_suggestions_reflect_actual_columns(client, messy_dataset):
 
 def test_chat_history_endpoints(client, messy_dataset):
     dataset_id, headers = messy_dataset
-    assert client.get(f"/datasets/{dataset_id}/chat/history", headers=headers).json() == []
+    assert (
+        client.get(f"/datasets/{dataset_id}/chat/history", headers=headers).json() == []
+    )
 
     cleared = client.delete(f"/datasets/{dataset_id}/chat/history", headers=headers)
     assert cleared.status_code == 200
@@ -248,24 +278,47 @@ def test_chat_history_endpoints(client, messy_dataset):
 
 def test_question_length_is_validated(client, messy_dataset):
     dataset_id, headers = messy_dataset
-    assert client.post(
-        f"/datasets/{dataset_id}/chat", headers=headers, json={"question": ""}
-    ).status_code == 422
-    assert client.post(
-        f"/datasets/{dataset_id}/chat", headers=headers, json={"question": "x" * 5000}
-    ).status_code == 422
+    assert (
+        client.post(
+            f"/datasets/{dataset_id}/chat", headers=headers, json={"question": ""}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f"/datasets/{dataset_id}/chat",
+            headers=headers,
+            json={"question": "x" * 5000},
+        ).status_code
+        == 422
+    )
 
 
 # ------------------------------------------------------- upload validation
 
+
 @pytest.mark.parametrize(
     "name,content,content_type,expected_code",
     [
-        ("broken.json", b"{not valid json at all", "application/json", "unparseable_file"),
-        ("fake.xlsx", b"this is not a spreadsheet",
-         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "unparseable_file"),
+        (
+            "broken.json",
+            b"{not valid json at all",
+            "application/json",
+            "unparseable_file",
+        ),
+        (
+            "fake.xlsx",
+            b"this is not a spreadsheet",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "unparseable_file",
+        ),
         ("headers_only.csv", b"a,b,c\n", "text/csv", "empty_dataset"),
-        ("script.exe", b"MZ\x90\x00", "application/octet-stream", "unsupported_file_type"),
+        (
+            "script.exe",
+            b"MZ\x90\x00",
+            "application/octet-stream",
+            "unsupported_file_type",
+        ),
     ],
 )
 def test_malformed_uploads_are_rejected(
@@ -273,7 +326,8 @@ def test_malformed_uploads_are_rejected(
 ):
     headers, _ = auth_headers
     r = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": (name, io.BytesIO(content), content_type)},
     )
     assert r.status_code in (400, 413), r.text
@@ -283,7 +337,8 @@ def test_malformed_uploads_are_rejected(
 def test_content_type_mismatch_is_rejected(client, auth_headers):
     headers, _ = auth_headers
     r = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": ("data.csv", io.BytesIO(b"a,b\n1,2\n"), "image/png")},
     )
     assert r.status_code == 400
@@ -297,7 +352,8 @@ def test_oversized_upload_is_rejected(client, auth_headers, monkeypatch):
     headers, _ = auth_headers
     payload = b"a,b\n" + b"1,2\n" * 5000
     r = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": ("big.csv", io.BytesIO(payload), "text/csv")},
     )
     assert r.status_code == 413
@@ -309,7 +365,8 @@ def test_json_and_excel_uploads_are_supported(client, auth_headers):
 
     json_payload = b'[{"a":1,"b":"x"},{"a":2,"b":"y"}]'
     r = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={"file": ("data.json", io.BytesIO(json_payload), "application/json")},
     )
     assert r.status_code == 200
@@ -320,10 +377,12 @@ def test_json_and_excel_uploads_are_supported(client, auth_headers):
     buffer = io.BytesIO()
     pd.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]}).to_excel(buffer, index=False)
     r = client.post(
-        "/datasets/upload", headers=headers,
+        "/datasets/upload",
+        headers=headers,
         files={
             "file": (
-                "data.xlsx", io.BytesIO(buffer.getvalue()),
+                "data.xlsx",
+                io.BytesIO(buffer.getvalue()),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         },
@@ -334,7 +393,10 @@ def test_json_and_excel_uploads_are_supported(client, auth_headers):
 
 # ------------------------------------------------------------ user summary
 
-def test_user_summary_is_scoped_to_the_authenticated_user(client, auth_headers, messy_dataset):
+
+def test_user_summary_is_scoped_to_the_authenticated_user(
+    client, auth_headers, messy_dataset
+):
     _, headers = messy_dataset
 
     r = client.get("/users/me/summary", headers=headers)
@@ -361,13 +423,19 @@ def test_user_summary_is_scoped_to_the_authenticated_user(client, auth_headers, 
 
 # -------------------------------------------------------------- analytics
 
+
 def test_analytics_query_validates_statistical_sense(client, messy_dataset):
     dataset_id, headers = messy_dataset
 
     ok = client.post(
         f"/datasets/{dataset_id}/analytics/query",
         headers=headers,
-        json={"measure": "revenue", "aggregation": "sum", "dimension": "region", "chart_type": "bar"},
+        json={
+            "measure": "revenue",
+            "aggregation": "sum",
+            "dimension": "region",
+            "chart_type": "bar",
+        },
     )
     assert ok.status_code == 200
     assert ok.json()["data"]
@@ -405,8 +473,11 @@ def test_analytics_timeseries_respects_grain(client, messy_dataset):
         f"/datasets/{dataset_id}/analytics/query",
         headers=headers,
         json={
-            "measure": "revenue", "aggregation": "sum", "date_column": "signup",
-            "time_grain": "month", "chart_type": "line",
+            "measure": "revenue",
+            "aggregation": "sum",
+            "date_column": "signup",
+            "time_grain": "month",
+            "chart_type": "line",
         },
     )
     assert r.status_code == 200

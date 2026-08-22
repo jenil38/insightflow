@@ -12,6 +12,7 @@ routers are mounted both at their legacy unprefixed path AND under /api/v1/...
 so existing frontend code keeps working while new code can use the versioned
 surface.
 """
+
 from fastapi import APIRouter, Depends, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -48,7 +49,9 @@ logger = get_logger("insightflow.main")
 if not settings.is_production:
     models.Base.metadata.create_all(bind=engine)
 
-limiter = Limiter(key_func=get_remote_address, default_limits=[settings.RATE_LIMIT_DEFAULT])
+limiter = Limiter(
+    key_func=get_remote_address, default_limits=[settings.RATE_LIMIT_DEFAULT]
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -82,7 +85,9 @@ app.add_middleware(
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@auth_router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
+@auth_router.post(
+    "/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit(settings.RATE_LIMIT_AUTH)
 def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     service = AuthService(db)
@@ -104,7 +109,9 @@ def login(request: Request, data: schemas.LoginRequest, db: Session = Depends(ge
 
 @auth_router.post("/refresh", response_model=schemas.Token)
 @limiter.limit(settings.RATE_LIMIT_AUTH)
-def refresh(request: Request, data: schemas.RefreshRequest, db: Session = Depends(get_db)):
+def refresh(
+    request: Request, data: schemas.RefreshRequest, db: Session = Depends(get_db)
+):
     service = AuthService(db)
     access_token, refresh_token = service.refresh_access_token(data.refresh_token)
     return schemas.Token(

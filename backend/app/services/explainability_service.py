@@ -15,6 +15,7 @@ Both are fixed here: explanations come from the persisted best model of the
 latest ModelRun, and the response always states `method` and `fallback_used`,
 with `fallback_reason` when SHAP could not run.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -80,7 +81,9 @@ class ExplainabilityService:
 
         # Rebuild features exactly as training did, then align to the stored
         # feature list so the matrix matches what the model expects.
-        X, y, _, _cat, _num = prep_features(df, target, excluded=(run.config or {}).get("excluded_columns") or [])
+        X, y, _, _cat, _num = prep_features(
+            df, target, excluded=(run.config or {}).get("excluded_columns") or []
+        )
         expected = list(run.features or X.columns)
         missing = [c for c in expected if c not in X.columns]
         if missing:
@@ -108,8 +111,11 @@ class ExplainabilityService:
                     "feature": str(col),
                     "importance_pct": safe_float(abs(float(val)) / total * 100, 2),
                     "direction": (
-                        None if signed is None
-                        else ("increases" if signed.get(str(col), 0) >= 0 else "decreases")
+                        None
+                        if signed is None
+                        else (
+                            "increases" if signed.get(str(col), 0) >= 0 else "decreases"
+                        )
                     ),
                 }
                 for col, val in zip(expected, importance)
@@ -118,33 +124,39 @@ class ExplainabilityService:
             reverse=True,
         )
 
-        return to_jsonable({
-            "method": method,
-            "method_label": METHOD_LABELS.get(method, method),
-            "fallback_used": method != "shap",
-            "fallback_reason": fallback_reason,
-            "target_column": target,
-            "task_type": run.task_type,
-            "model_name": run.best_model_name,
-            "model_version": run.version,
-            "model_run_id": run.id,
-            "trained_at": run.created_at.isoformat() if run.created_at else None,
-            "data_source": loaded.source,
-            "rows_explained": min(SHAP_SAMPLE_ROWS, int(len(X))) if method == "shap" else int(len(X)),
-            "feature_importance": ranked,
-            "top_drivers": ranked[:5],
-            "interpretation": self._interpretation(ranked, target, run.best_model_name, method),
-            "caveats": [
-                "Feature importance shows statistical association, not causation. A high-ranking "
-                "feature is not proven to cause the outcome.",
-                "Importances are relative to this model and this dataset; a different model or a "
-                "different sample can reorder them.",
-                (
-                    "Correlated features share credit, so a genuinely important driver can appear "
-                    "low if a near-duplicate column absorbs its contribution."
+        return to_jsonable(
+            {
+                "method": method,
+                "method_label": METHOD_LABELS.get(method, method),
+                "fallback_used": method != "shap",
+                "fallback_reason": fallback_reason,
+                "target_column": target,
+                "task_type": run.task_type,
+                "model_name": run.best_model_name,
+                "model_version": run.version,
+                "model_run_id": run.id,
+                "trained_at": run.created_at.isoformat() if run.created_at else None,
+                "data_source": loaded.source,
+                "rows_explained": min(SHAP_SAMPLE_ROWS, int(len(X)))
+                if method == "shap"
+                else int(len(X)),
+                "feature_importance": ranked,
+                "top_drivers": ranked[:5],
+                "interpretation": self._interpretation(
+                    ranked, target, run.best_model_name, method
                 ),
-            ],
-        })
+                "caveats": [
+                    "Feature importance shows statistical association, not causation. A high-ranking "
+                    "feature is not proven to cause the outcome.",
+                    "Importances are relative to this model and this dataset; a different model or a "
+                    "different sample can reorder them.",
+                    (
+                        "Correlated features share credit, so a genuinely important driver can appear "
+                        "low if a near-duplicate column absorbs its contribution."
+                    ),
+                ],
+            }
+        )
 
     def _compute_importance(
         self, pipeline, X: pd.DataFrame, y, classification: bool
@@ -172,7 +184,9 @@ class ExplainabilityService:
         shap_values, reason = self._try_shap(pipeline, estimator, X, preprocessor)
         if shap_values is not None:
             if has_ct:
-                shap_values = self._aggregate_to_original(shap_values, preprocessor, original_cols)
+                shap_values = self._aggregate_to_original(
+                    shap_values, preprocessor, original_cols
+                )
             signed = None
             try:
                 if shap_values.ndim == 2 and shap_values.shape[1] == len(original_cols):
@@ -202,7 +216,9 @@ class ExplainabilityService:
                 signed = {str(c): float(v) for c, v in zip(X.columns, coef)}
                 already_scaled = "scaler" in getattr(pipeline, "named_steps", {})
                 if not already_scaled:
-                    spread = X.std(numeric_only=True).reindex(X.columns).fillna(0).to_numpy()
+                    spread = (
+                        X.std(numeric_only=True).reindex(X.columns).fillna(0).to_numpy()
+                    )
                     if np.any(spread > 0):
                         coef = coef * spread
             return coef, "coefficients", reason, signed
@@ -221,21 +237,31 @@ class ExplainabilityService:
         original columns by summing one-hot contributions per feature."""
         col_to_idx = {col: i for i, col in enumerate(original_cols)}
         is_2d = values.ndim == 2
-        result = np.zeros((values.shape[0], len(original_cols))) if is_2d else np.zeros(len(original_cols))
+        result = (
+            np.zeros((values.shape[0], len(original_cols)))
+            if is_2d
+            else np.zeros(len(original_cols))
+        )
         pos = 0
         for tname, transformer, cols in preprocessor.transformers_:
             for i, col in enumerate(cols):
                 j = col_to_idx.get(str(col))
                 if tname == "cat" and hasattr(transformer, "categories_"):
                     n = len(transformer.categories_[i])
-                    if j is not None and pos + n <= (values.shape[1] if is_2d else len(values)):
+                    if j is not None and pos + n <= (
+                        values.shape[1] if is_2d else len(values)
+                    ):
                         if is_2d:
-                            result[:, j] = np.sum(np.abs(values[:, pos:pos + n]), axis=1)
+                            result[:, j] = np.sum(
+                                np.abs(values[:, pos : pos + n]), axis=1
+                            )
                         else:
-                            result[j] = float(np.sum(np.abs(values[pos:pos + n])))
+                            result[j] = float(np.sum(np.abs(values[pos : pos + n])))
                     pos += n
                 else:
-                    if j is not None and pos < (values.shape[1] if is_2d else len(values)):
+                    if j is not None and pos < (
+                        values.shape[1] if is_2d else len(values)
+                    ):
                         if is_2d:
                             result[:, j] = values[:, pos]
                         else:
@@ -263,7 +289,9 @@ class ExplainabilityService:
                 X_s, y_s = X, np.asarray(y)
 
             result = permutation_importance(
-                pipeline, X_s, y_s,
+                pipeline,
+                X_s,
+                y_s,
                 n_repeats=PERMUTATION_REPEATS,
                 random_state=42,
                 scoring="f1_weighted" if classification else "r2",
@@ -276,7 +304,9 @@ class ExplainabilityService:
             return None, f"permutation importance failed ({type(exc).__name__})"
 
     @staticmethod
-    def _try_shap(pipeline, estimator, X: pd.DataFrame, preprocessor=None) -> tuple[np.ndarray | None, str | None]:
+    def _try_shap(
+        pipeline, estimator, X: pd.DataFrame, preprocessor=None
+    ) -> tuple[np.ndarray | None, str | None]:
         """Attempt SHAP, returning (values, reason_it_failed)."""
         try:
             import shap
@@ -303,8 +333,10 @@ class ExplainabilityService:
             return None, f"SHAP does not support this model type ({type(exc).__name__})"
 
         try:
-            values = np.asarray(values) if not isinstance(values, list) else np.mean(
-                [np.abs(v) for v in values], axis=0
+            values = (
+                np.asarray(values)
+                if not isinstance(values, list)
+                else np.mean([np.abs(v) for v in values], axis=0)
             )
             if values.ndim == 3:
                 values = values.mean(axis=2)
@@ -332,7 +364,9 @@ class ExplainabilityService:
             f"{top['importance_pct']}% of total measured importance, based on {source}."
         ]
         if len(ranked) >= 3:
-            rest = ", ".join(f"{r['feature']} ({r['importance_pct']}%)" for r in ranked[1:3])
+            rest = ", ".join(
+                f"{r['feature']} ({r['importance_pct']}%)" for r in ranked[1:3]
+            )
             lines.append(f"It is followed by {rest}.")
         weak = [r for r in ranked if (r["importance_pct"] or 0) < 1]
         if weak:

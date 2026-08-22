@@ -4,6 +4,7 @@ Routers stay thin (parse request -> call service -> return response);
 repositories stay dumb (just DB queries). This is the separation the
 "service layer / repository layer" requirement asks for.
 """
+
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -40,7 +41,9 @@ class AuthService:
     def authenticate(self, email: str, password: str) -> models.User:
         user = self.users.get_by_email(email)
         if not user or not security.verify_password(password, user.hashed_password):
-            raise AuthError("Incorrect email or password", error_code="invalid_credentials")
+            raise AuthError(
+                "Incorrect email or password", error_code="invalid_credentials"
+            )
         if not user.is_active:
             raise AuthError("Account is disabled", error_code="account_disabled")
         return user
@@ -49,7 +52,9 @@ class AuthService:
         access_token = security.create_access_token(subject=user.email)
         raw_refresh, hashed_refresh, expires_at = security.generate_refresh_token()
         self.refresh_tokens.create(
-            models.RefreshToken(user_id=user.id, token_hash=hashed_refresh, expires_at=expires_at)
+            models.RefreshToken(
+                user_id=user.id, token_hash=hashed_refresh, expires_at=expires_at
+            )
         )
         return access_token, raw_refresh
 
@@ -59,7 +64,9 @@ class AuthService:
         token_hash = security.hash_refresh_token(raw_refresh_token)
         stored = self.refresh_tokens.get_valid_by_hash(token_hash)
         if not stored:
-            raise AuthError("Invalid or expired refresh token", error_code="invalid_refresh_token")
+            raise AuthError(
+                "Invalid or expired refresh token", error_code="invalid_refresh_token"
+            )
 
         user = self.users.get(stored.user_id)
         if not user or not user.is_active:
@@ -77,7 +84,9 @@ class AuthService:
     def verify_email(self, token: str) -> models.User:
         user = self.users.get_by_verification_token(token)
         if not user:
-            raise NotFoundError("Invalid verification token", error_code="invalid_verification_token")
+            raise NotFoundError(
+                "Invalid verification token", error_code="invalid_verification_token"
+            )
         user.is_verified = True
         user.verification_token = None
         self.db.commit()
@@ -99,14 +108,18 @@ class AuthService:
     def confirm_password_reset(self, token: str, new_password: str) -> None:
         user = self.users.get_by_reset_token(token)
         if not user or not user.reset_token_expires_at:
-            raise NotFoundError("Invalid or expired reset token", error_code="invalid_reset_token")
+            raise NotFoundError(
+                "Invalid or expired reset token", error_code="invalid_reset_token"
+            )
         expires_at = user.reset_token_expires_at
         if expires_at.tzinfo is None:
             # SQLite drops tzinfo on round-trip even for DateTime(timezone=True) columns,
             # so normalize to UTC-aware before comparing.
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         if expires_at < datetime.now(timezone.utc):
-            raise NotFoundError("Invalid or expired reset token", error_code="invalid_reset_token")
+            raise NotFoundError(
+                "Invalid or expired reset token", error_code="invalid_reset_token"
+            )
 
         user.hashed_password = security.hash_password(new_password)
         user.reset_token = None
@@ -114,5 +127,3 @@ class AuthService:
         self.db.commit()
         # Revoking all refresh tokens forces re-login everywhere after a reset.
         self.refresh_tokens.revoke_all_for_user(user.id)
-
-

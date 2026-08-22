@@ -5,6 +5,7 @@ module stays a thin FastAPI router.
 `read_dataframe` and `UPLOAD_DIR` are re-exported for backward compatibility,
 since several other modules import them from here.
 """
+
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
@@ -37,7 +38,9 @@ async def upload_dataset(
     )
 
 
-@router.get("", response_model=list[schemas.DatasetOut] | schemas.Page[schemas.DatasetOut])
+@router.get(
+    "", response_model=list[schemas.DatasetOut] | schemas.Page[schemas.DatasetOut]
+)
 def list_datasets(
     page: int | None = Query(default=None, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -51,7 +54,11 @@ def list_datasets(
     items, total = service.list_paginated(current_user.id, page, page_size)
     total_pages = (total + page_size - 1) // page_size if page_size else 0
     return schemas.Page(
-        items=items, total=total, page=page, page_size=page_size, total_pages=total_pages
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
     )
 
 
@@ -87,8 +94,14 @@ def preview_dataset(
 ):
     """Paginated row-level preview with sorting, search, and column selection."""
     return DatasetService(db).preview(
-        dataset, page=page, page_size=page_size, sort_by=sort_by,
-        sort_dir=sort_dir, search=search, columns=columns, use_cleaned=use_cleaned,
+        dataset,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        search=search,
+        columns=columns,
+        use_cleaned=use_cleaned,
     )
 
 
