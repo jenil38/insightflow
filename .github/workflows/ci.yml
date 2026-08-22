@@ -80,9 +80,9 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m alembic upgrade head
-      - run: |
-          python -c "from app.database import engine; from sqlalchemy import inspect; i = inspect(engine); tables = i.get_table_names(); assert 'users' in tables, f'Missing users table. Found {tables}'; print(f'OK: {len(tables)} tables created')"  secret-scan:
-    name: Secret scanning
+      
+            - run: |
+          python -c "from app.database import engine; from sqlalchemy import inspect; i = inspect(engine); tables = i.get_table_names(); assert 'users' in tables, f'Missing users table. Found {tables}'; print(f'OK: {len(tables)} tables created')"    name: Secret scanning
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -11,7 +11,7 @@ import { ArrowRight, Github } from "lucide-react";
 import { Aurora, CountUp, Reveal } from "../../components/scroll/index.jsx";
 
 const STATS = [
-  { value: 106, suffix: "", label: "Backend tests" },
+  { value: 105, suffix: "", label: "Backend tests" },
   { value: 12, suffix: "", label: "Candidate models" },
   { value: 4, suffix: "", label: "File formats" },
   { value: 100, suffix: "%", label: "Ownership-checked routes" },
