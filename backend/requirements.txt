@@ -15,6 +15,8 @@ pydantic-settings==2.5.2
 python-dotenv==1.0.1
 psycopg2-binary==2.9.9
 pandas==2.2.2
+numpy==2.2.3
+scipy==1.15.2
 openpyxl==3.1.5
 scikit-learn==1.5.2
 shap==0.46.0
