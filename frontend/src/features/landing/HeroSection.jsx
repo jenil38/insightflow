@@ -65,7 +65,7 @@ export default function HeroSection() {
         <Reveal delay={0.9} className="mt-6 max-w-2xl">
           <p className="text-lg leading-relaxed text-muted sm:text-xl">
             InsightFlow profiles your data, scores its quality against formulas you can read,
-            trains and ranks a dozen models, and explains what actually drives the outcome —
+            trains and ranks a dozen models, and explains what actually drives the outcome,
             without you writing a line of code.
           </p>
         </Reveal>

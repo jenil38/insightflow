@@ -515,11 +515,11 @@ function TrainingResult({ result, onDownload }) {
                         {formatNumber(row.score, { decimals: 4 })}
                       </td>
                       <td className="numeric px-3 py-2 text-muted">
-                        {row.cv_score == null ? "—" : formatNumber(row.cv_score, { decimals: 4 })}
+                        {row.cv_score == null ? "-" : formatNumber(row.cv_score, { decimals: 4 })}
                       </td>
                       <td className="numeric px-3 py-2 text-muted">{row.training_time_sec}s</td>
                       <td className="px-3 py-2 text-right">
-                        {row.tuned ? <Badge tone="success">Yes</Badge> : <span className="text-subtle">—</span>}
+                        {row.tuned ? <Badge tone="success">Yes</Badge> : <span className="text-subtle">-</span>}
                       </td>
                     </tr>
                   );

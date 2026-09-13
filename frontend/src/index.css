@@ -4,7 +4,7 @@
 
 /*
  * ============================================================================
- * InsightFlow — Premium 3D Design System
+ * InsightFlow: Premium 3D Design System
  * ============================================================================
  *
  * Two ideas drive this system:
@@ -390,7 +390,7 @@ body {
   }
 
   /* ======================================================================
-     Raised surface — the core 3D primitive
+     Raised surface: the core 3D primitive
      ----------------------------------------------------------------------
      Every card, panel and tile in the product is this. The fill gradient runs
      light-to-base top-to-bottom so the face reads as angled toward a light
@@ -437,7 +437,7 @@ body {
     }
   }
 
-  /* Recessed well — inputs, progress tracks, code blocks. The inverse of
+  /* Recessed well: inputs, progress tracks, code blocks. The inverse of
      surface-3d: shade at the top, highlight at the bottom. */
   .surface-inset {
     background-color: rgb(var(--color-canvas));
@@ -541,7 +541,7 @@ body {
   }
 
   /* ======================================================================
-     Luxe accents — the champagne layer
+     Luxe accents: the champagne layer
      ====================================================================== */
 
   /* Hairline gold rim. Uses a padding-box/border-box double background so the
@@ -565,7 +565,7 @@ body {
   }
 
   /* ======================================================================
-     Glass — marketing surfaces
+     Glass: marketing surfaces
      ====================================================================== */
   .glass {
     position: relative;

@@ -3,7 +3,7 @@
  *
  * Shows the grounding contract rather than a generic chat mockup: the answer
  * cites the columns it used, and the panel alongside spells out what is and
- * isn't sent to the model. The prompt-injection line is real behaviour — cell
+ * isn't sent to the model. The prompt-injection line is real behaviour: cell
  * values that look like instructions are redacted before the prompt is built.
  */
 import { useRef } from "react";
@@ -16,7 +16,7 @@ const GUARANTEES = [
   {
     icon: Database,
     title: "Grounded in computed statistics",
-    body: "Column types, ranges, correlations and quality scores — not a dump of your rows.",
+    body: "Column types, ranges, correlations and quality scores, not a dump of your rows.",
   },
   {
     icon: Lock,
@@ -41,7 +41,7 @@ const CONVERSATION = [
     role: "assistant",
     text:
       "Two columns have gaps. **notes** is 62% empty (31 of 50 rows), and **region** is missing 4 values. " +
-      "Everything else is complete. The notes column is empty enough that imputing it would mostly invent data — " +
+      "Everything else is complete. The notes column is empty enough that imputing it would mostly invent data, so " +
       "consider excluding it before modelling.",
     columns: ["notes", "region"],
   },
@@ -151,7 +151,7 @@ export default function CopilotSection() {
             <Reveal delay={0.35}>
               <p className="glass glass-subtle mt-7 rounded-xl px-3.5 py-3 text-xs leading-relaxed text-muted">
                 Optional feature. Without an API key configured, the Copilot shows a clear
-                &ldquo;not configured&rdquo; state — and every other part of the product works
+                &ldquo;not configured&rdquo; state, and every other part of the product works
                 exactly as before.
               </p>
             </Reveal>

@@ -395,9 +395,9 @@ function ProfileSection({ user }) {
               id="workspace-visibility"
               defaultValue="team"
               options={[
-                { value: "private", label: "Private — only me" },
-                { value: "team", label: "Team — anyone in this workspace" },
-                { value: "org", label: "Organisation — all workspaces" },
+                { value: "private", label: "Private (only me)" },
+                { value: "team", label: "Team (anyone in this workspace)" },
+                { value: "org", label: "Organisation (all workspaces)" },
               ]}
             />
           </Field>
@@ -1131,7 +1131,7 @@ function TeamSection({ user }) {
                           </>
                         ) : (
                           <>
-                            <span aria-hidden="true" className="text-subtle">—</span>
+                            <span aria-hidden="true" className="text-subtle">-</span>
                             <span className="sr-only">Not allowed</span>
                           </>
                         )}

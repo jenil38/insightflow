@@ -131,7 +131,7 @@ export default function AgentPanel({ datasetId }) {
             <StatCard label="Duration" value={`${result.duration_sec}s`} />
             <StatCard
               label="Quality score"
-              value={result.summary.quality_score ?? "—"}
+              value={result.summary.quality_score ?? "-"}
               tone={
                 result.summary.quality_score >= 90
                   ? "success"
@@ -233,10 +233,10 @@ export default function AgentPanel({ datasetId }) {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Detail label="Rows before cleaning" value={formatNumber(result.summary.rows_before_cleaning)} />
                 <Detail label="Rows after cleaning" value={formatNumber(result.summary.rows_after_cleaning)} />
-                <Detail label="Target column" value={result.summary.target_column || "—"} />
+                <Detail label="Target column" value={result.summary.target_column || "-"} />
                 <Detail
                   label="Top driver"
-                  value={result.summary.top_feature || "—"}
+                  value={result.summary.top_feature || "-"}
                   hint={result.summary.explanation_method}
                 />
               </div>

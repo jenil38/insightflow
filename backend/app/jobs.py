@@ -1,7 +1,7 @@
 """Job status routes.
 
 Clients poll GET /jobs/{id} after submitting an async operation. The job
-manager is an in-memory store — on multi-node deployments, replace it with
+manager is an in-memory store. On multi-node deployments, replace it with
 a shared backend (Redis, database).
 """
 

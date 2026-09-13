@@ -188,7 +188,7 @@ export default function ExplainSection() {
               <p className="text-xs leading-relaxed text-muted">
                 Importance is statistical association, not causation. Correlated features share
                 credit, so a real driver can rank low when a near-duplicate column absorbs its
-                contribution — the API returns these caveats with every explanation.
+                contribution. The API returns these caveats with every explanation.
               </p>
             </div>
           </div>

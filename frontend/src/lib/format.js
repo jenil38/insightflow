@@ -7,7 +7,7 @@
  * "NaN" or "null" in a table is worse than printing nothing.
  */
 
-const DASH = "—";
+const DASH = "-";
 
 export function formatNumber(value, { decimals, compact = false } = {}) {
   if (value === null || value === undefined || value === "") return DASH;

@@ -2,7 +2,7 @@
  * Closing CTA and footer.
  *
  * The stat row uses the project's real measured figures (test count, model
- * count, supported formats) rather than invented traction numbers — there are
+ * count, supported formats) rather than invented traction numbers. There are
  * no users to count, and claiming otherwise would be fiction.
  */
 import { Link } from "react-router-dom";
@@ -37,7 +37,7 @@ export default function CtaSection() {
               Upload a CSV. See the whole picture.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              Profiling, cleaning, dashboards, model comparison, explanations and a PDF report —
+              Profiling, cleaning, dashboards, model comparison, explanations and a PDF report,
               from one file, in one place.
             </p>
           </Reveal>
