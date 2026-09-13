@@ -25,7 +25,7 @@ const OVERALL = 90.9;
 const FINDINGS = [
   { severity: "danger", icon: AlertTriangle, text: "1 column is over 40% empty" },
   { severity: "warning", icon: AlertTriangle, text: "1 duplicate row found" },
-  { severity: "info", icon: Info, text: "1 likely identifier column — exclude from training" },
+  { severity: "info", icon: Info, text: "1 likely identifier column: exclude from training" },
   { severity: "info", icon: Info, text: "1 outlier by the 1.5×IQR rule" },
 ];
 
@@ -65,7 +65,7 @@ export default function QualitySection() {
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
             Every component is a documented formula over observable counts. No opaque
-            &ldquo;AI score&rdquo; — the API returns the arithmetic alongside the number, so you can
+            &ldquo;AI score&rdquo;: the API returns the arithmetic alongside the number, so you can
             check the work.
           </p>
         </Reveal>

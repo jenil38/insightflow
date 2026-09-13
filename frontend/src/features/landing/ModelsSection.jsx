@@ -3,7 +3,7 @@
  *
  * Rows animate in ranked order and their score bars grow on scroll, so the
  * leaderboard visibly "settles" into its ranking. The metrics shown are the
- * real ones the API returns for a regression run (R², RMSE, MAE) — including
+ * real ones the API returns for a regression run (R², RMSE, MAE), including
  * the cross-validated column, which is the figure that actually matters.
  */
 import { motion } from "framer-motion";

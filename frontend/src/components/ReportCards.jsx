@@ -147,7 +147,7 @@ export function MLReport({ report }) {
   return (
     <div className="glass-panel p-6">
       <h3 className="font-medium text-amber-600 mb-1">
-        Machine Learning Engine — {report.task_type} on "{report.target_column}"
+        Machine Learning Engine: {report.task_type} on "{report.target_column}"
       </h3>
       <p className="text-xs text-slate-400 mb-4">Trained on {report.rows_used} rows · {report.features_used.length} features</p>
       <motion.div variants={gridFade} initial="hidden" animate="show" className="space-y-2">
@@ -183,7 +183,7 @@ export function ExplainReport({ report }) {
   const max = Math.max(...report.feature_importance.map((f) => f.importance_pct), 1);
   return (
     <div className="glass-panel p-6">
-      <h3 className="font-medium text-fuchsia-600 mb-4">Explainable AI — why "{report.target_column}" happens</h3>
+      <h3 className="font-medium text-fuchsia-600 mb-4">Explainable AI: why "{report.target_column}" happens</h3>
       <div className="space-y-3">
         {report.feature_importance.map((f, i) => (
           <div key={f.feature}>
@@ -209,7 +209,7 @@ export function ExplainReport({ report }) {
 export function AgentReport({ steps }) {
   return (
     <div className="glass-panel p-6">
-      <h3 className="font-medium text-violet-600 mb-4">Guided Analysis — full pipeline</h3>
+      <h3 className="font-medium text-violet-600 mb-4">Guided Analysis: full pipeline</h3>
       <motion.div variants={gridFade} initial="hidden" animate="show" className="space-y-2">
         {steps.map((s, i) => (
           <motion.div key={i} variants={cell} className="glass rounded-xl px-4 py-3">

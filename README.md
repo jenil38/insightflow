@@ -1,22 +1,22 @@
 # InsightFlow
 
-End-to-end data analytics platform that takes a CSV, Excel, or JSON upload through profiling, cleaning, visualization, machine learning, explainability, and AI-powered conversation — all from a single workspace.
+End-to-end data analytics platform that takes a CSV, Excel, or JSON upload through profiling, cleaning, visualization, machine learning, explainability, and AI-powered conversation, all from a single workspace.
 
 ## Features
 
-**Data Management** — Upload CSV/Excel/JSON, profile columns automatically, get quality scores with actionable warnings, and clean data with a preview-before-apply workflow. Original uploads are preserved; cleaning creates a separate copy you can revert at any time.
+**Data Management**: Upload CSV/Excel/JSON, profile columns automatically, get quality scores with actionable warnings, and clean data with a preview-before-apply workflow. Original uploads are preserved; cleaning creates a separate copy you can revert at any time.
 
-**Analytics** — Auto-generated dashboards with KPIs, time series, distributions, and category breakdowns. Custom query builder for ad-hoc analysis with configurable aggregations, dimensions, filters, and chart types. Saveable dashboard layouts.
+**Analytics**: Auto-generated dashboards with KPIs, time series, distributions, and category breakdowns. Custom query builder for ad-hoc analysis with configurable aggregations, dimensions, filters, and chart types. Saveable dashboard layouts.
 
-**Machine Learning** — Leaderboard of 12+ models (Random Forest, XGBoost, LightGBM, CatBoost, SVM, etc.) with automatic hyperparameter tuning. Leak-free pipeline using `ColumnTransformer` + `OneHotEncoder` inside sklearn `Pipeline` so encoding fits only on training data. Stratified splits, cross-validation, baseline comparisons, and reproducibility metadata on every run.
+**Machine Learning**: Leaderboard of 12+ models (Random Forest, XGBoost, LightGBM, CatBoost, SVM, etc.) with automatic hyperparameter tuning. Leak-free pipeline using `ColumnTransformer` + `OneHotEncoder` inside sklearn `Pipeline` so encoding fits only on training data. Stratified splits, cross-validation, baseline comparisons, and reproducibility metadata on every run.
 
-**Explainability** — Feature importance via model-native methods and SHAP, with one-hot importance aggregated back to original columns. Confusion matrices for classifiers, actual-vs-predicted and residual plots for regressors.
+**Explainability**: Feature importance via model-native methods and SHAP, with one-hot importance aggregated back to original columns. Confusion matrices for classifiers, actual-vs-predicted and residual plots for regressors.
 
-**AI Copilot** — LLM-powered data Q&A grounded in computed statistics, not raw data. Prompt-injection defenses, conversation history, and smart suggested questions derived from the actual dataset. Provider-agnostic with circuit breaker for reliability.
+**AI Copilot**: LLM-powered data Q&A grounded in computed statistics, not raw data. Prompt-injection defenses, conversation history, and smart suggested questions derived from the actual dataset. Provider-agnostic with circuit breaker for reliability.
 
-**Guided Analysis** — One-click pipeline that chains profiling, quality assessment, cleaning, analytics, training, explainability, and summarization. Each step reports its real outcome and duration.
+**Guided Analysis**: One-click pipeline that chains profiling, quality assessment, cleaning, analytics, training, explainability, and summarization. Each step reports its real outcome and duration.
 
-**PDF Reports** — Downloadable reports with profile, quality scores, analytics, and model results.
+**PDF Reports**: Downloadable reports with profile, quality scores, analytics, and model results.
 
 ## Tech Stack
 

@@ -111,7 +111,7 @@ export default function Home() {
           <StatCard
             label="Latest upload"
             value={
-              summary.data?.latest_upload_at ? formatRelative(summary.data.latest_upload_at) : "—"
+              summary.data?.latest_upload_at ? formatRelative(summary.data.latest_upload_at) : "-"
             }
             loading={summary.isLoading}
           />

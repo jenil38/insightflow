@@ -212,7 +212,7 @@ def prep_features(
 ) -> tuple[pd.DataFrame, pd.Series, list[str], list[str], list[str]]:
     """Returns (X, y, dropped_columns, cat_cols, num_cols).
 
-    Categorical columns are left as strings — encoding happens inside the
+    Categorical columns are left as strings; encoding happens inside the
     sklearn Pipeline (via ColumnTransformer) so it fits only on training data,
     preventing target leakage from the encoder seeing test-set categories."""
     excluded = [c for c in (excluded or []) if c != target]

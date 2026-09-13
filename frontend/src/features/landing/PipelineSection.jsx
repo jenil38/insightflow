@@ -19,7 +19,7 @@ const STAGES = [
   {
     icon: Table2,
     title: "Upload and explore",
-    body: "Drop in a CSV, Excel workbook, or JSON file. Browse it a page at a time with sorting, search, and per-column statistics — the whole file never has to reach your browser.",
+    body: "Drop in a CSV, Excel workbook, or JSON file. Browse it a page at a time with sorting, search, and per-column statistics. The whole file never has to reach your browser.",
     visual: UploadVisual,
   },
   {
@@ -37,7 +37,7 @@ const STAGES = [
   {
     icon: BarChart3,
     title: "Build the dashboard",
-    body: "Pick a measure, aggregation, dimension, and time grain. Combinations that would mislead — a pie chart over forty categories, a sum over a text column — are refused with a reason.",
+    body: "Pick a measure, aggregation, dimension, and time grain. Combinations that would mislead (a pie chart over forty categories, a sum over a text column) are refused with a reason.",
     visual: AnalyticsVisual,
   },
   {
@@ -149,7 +149,7 @@ export default function PipelineSection() {
                     <span key={dot} className={`h-2.5 w-2.5 rounded-full ${dot}`} />
                   ))}
                   <span className="ml-3 truncate text-xs text-subtle">
-                    insightflow — {STAGES[active].title.toLowerCase()}
+                    insightflow · {STAGES[active].title.toLowerCase()}
                   </span>
                 </div>
 
