@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from . import auth, models
 from .database import get_db
 from .deps import get_owned_dataset
-from .services.agent_service import AgentService
 
 router = APIRouter(prefix="/datasets", tags=["guided-analysis"])
 
@@ -30,6 +29,9 @@ def run_guided_analysis(
     step carries its real measured duration and outcome, and a step that cannot
     run is marked skipped rather than aborting the remaining steps.
     """
+    # Imported on first use: the pipeline pulls in scikit-learn (see app/ml.py).
+    from .services.agent_service import AgentService
+
     return AgentService(db).run(
         dataset, current_user.id, apply_cleaning=apply_cleaning, train=train
     )

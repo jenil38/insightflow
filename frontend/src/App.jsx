@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 
 import AppShell from "./components/layout/AppShell.jsx";
 import ErrorBoundary from "./components/feedback/ErrorBoundary.jsx";
+import ServerWakeNotice from "./components/feedback/ServerWakeNotice.jsx";
 import UploadDialog from "./features/datasets/UploadDialog.jsx";
 import { AuthProvider, ThemeProvider, createQueryClient, useAuth, useTheme } from "./app/providers.jsx";
 import { LoadingState } from "./components/ui/index.jsx";
@@ -88,6 +89,9 @@ function ToastHost() {
 function RouteFallback() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
+      {/* A returning signed-in user waits here while their session is checked,
+          which on a cold server is the entire wake-up. */}
+      <ServerWakeNotice className="mb-6" />
       <LoadingState message="Loading page" rows={4} />
     </div>
   );
