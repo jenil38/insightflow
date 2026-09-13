@@ -1,0 +1,53 @@
+name: Keep backend awake
+
+# Render's free tier suspends the API after about 15 minutes without traffic,
+# and the next request then waits for a cold start (measured at 60-72 s). This
+# pings /health often enough that the instance never goes idle.
+#
+# Limits worth knowing:
+# - GitHub runs scheduled workflows on a best-effort basis. Runs can start late
+#   when GitHub is under load, so an occasional cold start can still slip
+#   through. Pinging every 5 minutes leaves room for that.
+# - GitHub disables scheduled workflows in a public repository after 60 days
+#   with no repository activity. If that happens, re-enable this workflow from
+#   the Actions tab.
+# - A free instance that never sleeps uses about 744 of the 750 free
+#   instance-hours per month that Render shares across every free service in
+#   the workspace.
+#
+# The job does not fail on a bad response. A failed scheduled run emails the
+# repository owner, so during an outage that would mean an email every few
+# minutes. A bad response is reported as a warning on the run instead.
+
+on:
+  schedule:
+    # Offset from the top of the hour, when GitHub's scheduler is busiest.
+    - cron: "3-59/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keep-backend-awake
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping /health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /health
+        env:
+          HEALTH_URL: https://insightflow-ct5l.onrender.com/health
+        run: |
+          # --max-time covers a full cold start; the retries cover a request
+          # that arrives while Render is still routing to the new instance.
+          result=$(curl --silent --output /dev/null --max-time 150 \
+            --retry 2 --retry-delay 10 --retry-all-errors \
+            --write-out "%{http_code} in %{time_total}s" "$HEALTH_URL" || true)
+          echo "Response: ${result:-no response}"
+          case "$result" in
+            200*) ;;
+            *) echo "::warning title=Backend health check::Got '${result:-no response}' from $HEALTH_URL" ;;
+          esac
