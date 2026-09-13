@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 import { Activity } from "lucide-react";
 import { z } from "zod";
 
+import ServerWakeNotice from "../../components/feedback/ServerWakeNotice.jsx";
+
 export default function AuthLayout({ title, description, children, footer }) {
   return (
     // The mesh wash gives the raised card something to sit against; on a flat
@@ -23,6 +25,8 @@ export default function AuthLayout({ title, description, children, footer }) {
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">{title}</h1>
           {description && <p className="mt-1.5 text-base text-muted">{description}</p>}
         </div>
+
+        <ServerWakeNotice className="mb-4" />
 
         <div className="card shadow-depth-3 p-6 sm:p-7">{children}</div>
 

@@ -10,9 +10,16 @@ from . import auth, models, schemas
 from .core.limits import check_report_rate
 from .database import get_db
 from .deps import get_owned_dataset
-from .services.report_service import ReportService
 
 router = APIRouter(prefix="/datasets", tags=["report"])
+
+
+def _report_service(db: Session):
+    # Imported on first use: the report service reads model results through the
+    # ML service, which pulls in scikit-learn (see app/ml.py).
+    from .services.report_service import ReportService
+
+    return ReportService(db)
 
 
 @router.get("/{dataset_id}/report")
@@ -22,7 +29,7 @@ def generate_report(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     check_report_rate(db, current_user.id)
-    payload, filename = ReportService(db).generate_pdf(dataset, current_user.id)
+    payload, filename = _report_service(db).generate_pdf(dataset, current_user.id)
     return Response(
         content=payload,
         media_type="application/pdf",
@@ -38,4 +45,4 @@ def report_history(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    return ReportService(db).report_history(dataset.id, current_user.id)
+    return _report_service(db).report_history(dataset.id, current_user.id)

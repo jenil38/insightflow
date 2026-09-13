@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from . import auth, models
 from .database import get_db
 from .deps import get_owned_dataset
-from .services.explainability_service import ExplainabilityService
 
 router = APIRouter(prefix="/datasets", tags=["explainability"])
 
@@ -23,4 +22,8 @@ def explain_dataset(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
+    # Imported on first use: explanation builds on the ML service, which pulls
+    # in scikit-learn (see app/ml.py).
+    from .services.explainability_service import ExplainabilityService
+
     return ExplainabilityService(db).explain(dataset, current_user.id)
