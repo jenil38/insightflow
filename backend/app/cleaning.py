@@ -18,7 +18,7 @@ from .services.cleaning_service import (  # noqa: F401 - re-exported
     clean_dataframe,
     cleaning_service,
 )
-from .services.dataframe_io import cleaned_path_for, load_dataset, write_dataframe
+from .services.dataframe_io import load_dataset
 
 router = APIRouter(prefix="/datasets", tags=["cleaning"])
 
@@ -62,16 +62,7 @@ def apply_cleaning(
     safe operation rather than a destructive one.
     """
     config = (body or schemas.CleaningRequest()).config
-    loaded = load_dataset(dataset, prefer="original")
-    cleaned_df, report = cleaning_service.apply_config(loaded.df, config)
-
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    target_path = cleaned_path_for(dataset)
-    write_dataframe(cleaned_df, target_path)
-
-    dataset.cleaned_path = target_path
-    dataset.cleaning_log = report.get("steps", [])
-    db.commit()
+    _cleaned_df, report = cleaning_service.apply_and_persist(db, dataset, config)
 
     report["data_source"] = "cleaned"
     report["reverted"] = False

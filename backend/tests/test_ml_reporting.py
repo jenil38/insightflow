@@ -341,3 +341,28 @@ def test_agent_can_skip_optional_stages(client, dataset):
     assert steps["clean"]["status"] == "skipped"
     assert steps["train"]["status"] == "skipped"
     assert steps["analytics"]["status"] == "completed"
+
+
+def test_agent_pipeline_records_the_cleaning_log(client, dataset):
+    """Guided Analysis wrote the cleaned file but never recorded the audit log,
+    so /clean/log came back empty for a dataset it had just cleaned. Both it and
+    the /clean/apply route now persist through
+    CleaningService.apply_and_persist, so the stored state is identical
+    whichever path did the cleaning.
+
+    `train=false` because this is about the cleaning step; training a dozen
+    models here would only make the test slow.
+    """
+    dataset_id, headers = dataset
+
+    run = client.post(f"/datasets/{dataset_id}/agent/run?train=false", headers=headers)
+    assert run.status_code == 200
+    steps = {s["key"]: s for s in run.json()["steps"]}
+    assert steps["clean"]["status"] == "completed"
+
+    log = client.get(f"/datasets/{dataset_id}/clean/log", headers=headers)
+    assert log.status_code == 200
+    body = log.json()
+    assert body["has_cleaned_version"] is True
+    assert body["cleaning_log"], "Guided Analysis must record the cleaning steps"
+    assert all("step" in entry for entry in body["cleaning_log"])
