@@ -43,6 +43,15 @@ INJECTION_CSV = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _configured_agent(monkeypatch):
+    """The test environment has no real GROQ_API_KEY. ToolAgentService.ask
+    refuses to run at all when unconfigured (the same guard ChatService.ask
+    uses), so every test here needs a key present -- its value never reaches
+    anywhere real since requests.post is mocked."""
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "test-key")
+
+
 @pytest.fixture
 def uploaded(client):
     client.post(
@@ -264,6 +273,23 @@ def test_step_limit_ends_the_run_without_calling_the_model_again(
     assert mock_post.call_count == 2  # one provider call per step, then stop
     steps = db.query(models.AgentStep).filter(models.AgentStep.run_id == run.id).all()
     assert len(steps) == 2
+
+
+# ----------------------------------------------------------- not configured
+
+
+def test_unconfigured_server_refuses_cleanly(uploaded, monkeypatch):
+    """Without a key, this must fail before anything hits the network -- there
+    is no mocked requests.post in this test, so a real call would surface as
+    a connection error instead of this clean 503 if the guard were missing."""
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
+    db, dataset, user_id = uploaded
+
+    with pytest.raises(ValidationAppError) as exc_info:
+        ToolAgentService(db).ask(dataset, user_id, "Anything", allow_actions=False)
+
+    assert exc_info.value.error_code == "agent_not_configured"
+    assert db.query(models.AgentRun).count() == 0
 
 
 # --------------------------------------------------------------- rate limit
