@@ -39,6 +39,7 @@ from .jobs import router as jobs_router
 from .ml import router as ml_router
 from .report import router as report_router
 from .services.auth_service import AuthService
+from .tool_agent import router as tool_agent_router
 from .users import router as users_router
 
 configure_logging()
@@ -224,6 +225,7 @@ feature_routers = [
     explain_router,
     chat_router,
     agent_router,
+    tool_agent_router,
     report_router,
     jobs_router,
 ]

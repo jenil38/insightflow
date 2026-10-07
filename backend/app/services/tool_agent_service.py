@@ -145,6 +145,19 @@ class ToolAgentService:
         question: str,
         allow_actions: bool = False,
     ) -> models.AgentRun:
+        if not settings.copilot_enabled:
+            # Same guard ChatService.ask uses, and for the same reason: without
+            # this, an unconfigured server would send a request with an empty
+            # bearer token to the real provider instead of failing cleanly -
+            # and in tests, an unmocked call would reach the real network.
+            raise ValidationAppError(
+                "The AI agent is not configured on this server. Set GROQ_API_KEY in "
+                "the backend environment to enable it. Every other feature works "
+                "without it.",
+                error_code="agent_not_configured",
+                status_code=503,
+            )
+
         check_agent_rate(self.db, user_id)
 
         run = models.AgentRun(
