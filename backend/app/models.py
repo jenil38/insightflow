@@ -14,15 +14,16 @@ Phase 1/3 additions on top of the original schema:
 """
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
+    Index,
     Integer,
-    JSON,
     String,
     Text,
-    Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -61,6 +62,9 @@ class User(Base):
     )
     dashboard_layouts = relationship(
         "DashboardLayout", back_populates="user", cascade="all, delete-orphan"
+    )
+    agent_runs = relationship(
+        "AgentRun", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -117,6 +121,9 @@ class Dataset(Base):
     )
     dashboard_layouts = relationship(
         "DashboardLayout", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    agent_runs = relationship(
+        "AgentRun", back_populates="dataset", cascade="all, delete-orphan"
     )
 
     __table_args__ = (Index("ix_datasets_owner_uploaded", "owner_id", "uploaded_at"),)
@@ -244,3 +251,82 @@ class ReportRecord(Base):
 
     user = relationship("User", back_populates="reports")
     dataset = relationship("Dataset", back_populates="reports")
+
+
+class AgentRun(Base):
+    """One invocation of the tool-calling agent on a dataset.
+
+    Records the question, the final answer, token spend, and whether the run
+    completed normally or hit a limit.  Each tool call the model made is a
+    child AgentStep.
+    """
+
+    __tablename__ = "agent_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    status = Column(
+        String, nullable=False, default="running"
+    )  # running | completed | error | step_limit
+    allow_actions = Column(Boolean, nullable=False, default=False)
+    total_prompt_tokens = Column(Integer, nullable=True, default=0)
+    total_completion_tokens = Column(Integer, nullable=True, default=0)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+
+    user = relationship("User", back_populates="agent_runs")
+    dataset = relationship("Dataset", back_populates="agent_runs")
+    steps = relationship(
+        "AgentStep",
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="AgentStep.step_number",
+    )
+
+    __table_args__ = (Index("ix_agent_runs_user_created", "user_id", "created_at"),)
+
+
+class AgentStep(Base):
+    """One tool call within an agent run.
+
+    ``arguments`` stores what the model sent (before validation) so the trace
+    shows exactly what the model hallucinated when validation fails.
+    ``redacted`` is true when the tool result contained an injection pattern
+    that was neutralised by the sanitiser.
+    """
+
+    __tablename__ = "agent_steps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(
+        Integer,
+        ForeignKey("agent_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    step_number = Column(Integer, nullable=False)
+    tool_name = Column(String, nullable=False)
+    arguments = Column(JSON, nullable=True)  # raw from the model, before validation
+    status = Column(
+        String, nullable=False
+    )  # ok | invalid_arguments | blocked_action | tool_error | unknown_tool
+    result_summary = Column(Text, nullable=True)  # sanitised excerpt for the trace
+    redacted = Column(Boolean, nullable=False, default=False)
+    truncated = Column(Boolean, nullable=False, default=False)
+    prompt_tokens = Column(Integer, nullable=True)
+    completion_tokens = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    run = relationship("AgentRun", back_populates="steps")

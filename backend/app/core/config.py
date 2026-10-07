@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     # tokens: the provider reports token usage only after the call, so a local
     # character budget is the only limit that can be enforced beforehand.
     AGENT_MAX_PROMPT_CHARS: int = 24_000
+    # How many agent runs a single user may start per hour.
+    MAX_AGENT_RUNS_PER_HOUR: int = 30
+    # Hard ceiling on tool-calling steps in a single agent run.
+    AGENT_MAX_STEPS: int = 15
 
     # --- Email (logs instead of sending unless SMTP_HOST is set) ---
     SMTP_HOST: str = ""

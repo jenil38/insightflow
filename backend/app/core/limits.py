@@ -81,6 +81,24 @@ def check_report_rate(db: Session, user_id: int) -> None:
         )
 
 
+def check_agent_rate(db: Session, user_id: int) -> None:
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    count = (
+        db.query(func.count(models.AgentRun.id))
+        .filter(
+            models.AgentRun.user_id == user_id,
+            models.AgentRun.created_at > cutoff,
+        )
+        .scalar()
+        or 0
+    )
+    if count >= settings.MAX_AGENT_RUNS_PER_HOUR:
+        raise RateLimitedError(
+            f"You can run up to {settings.MAX_AGENT_RUNS_PER_HOUR} agent queries per hour.",
+            error_code="agent_rate_limited",
+        )
+
+
 def check_copilot_rate(db: Session, user_id: int) -> None:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
     count = (
