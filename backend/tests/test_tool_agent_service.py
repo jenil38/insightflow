@@ -194,6 +194,36 @@ def test_one_tool_call_then_an_answer(mock_post, uploaded):
     assert steps[0].arguments == {}
     assert steps[0].duration_seconds is not None
     assert steps[0].duration_seconds >= 0
+    assert steps[0].prompt_tokens == 100
+    assert steps[0].completion_tokens == 20
+
+
+@patch("app.services.chat_service.requests.post")
+def test_parallel_tool_calls_charge_the_model_call_to_the_first_step(mock_post, uploaded):
+    db, dataset, user_id = uploaded
+
+    two_calls = _tool_call_response("get_dataset_overview", {})
+    two_calls["choices"][0]["message"]["tool_calls"].append(
+        {
+            "id": "call_2",
+            "type": "function",
+            "function": {"name": "assess_quality", "arguments": "{}"},
+        }
+    )
+    mock_post.side_effect = [
+        _mock_response(200, two_calls),
+        _mock_response(200, _plain_answer_response("Done.")),
+    ]
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Overview and quality?")
+
+    steps = (
+        db.query(models.AgentStep)
+        .filter(models.AgentStep.run_id == run.id)
+        .order_by(models.AgentStep.step_number)
+        .all()
+    )
+    assert [(s.prompt_tokens, s.completion_tokens) for s in steps] == [(100, 20), (0, 0)]
 
 
 @patch("app.services.chat_service.requests.post")

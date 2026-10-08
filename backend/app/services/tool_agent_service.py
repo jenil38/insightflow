@@ -226,12 +226,12 @@ class ToolAgentService:
                 )
 
             result = _call_provider(budgeted_messages, tools_schema)
-            run.total_prompt_tokens = (run.total_prompt_tokens or 0) + int(
-                result.usage.get("prompt_tokens") or 0
-            )
-            run.total_completion_tokens = (run.total_completion_tokens or 0) + int(
-                result.usage.get("completion_tokens") or 0
-            )
+            call_prompt_tokens = int(result.usage.get("prompt_tokens") or 0)
+            call_completion_tokens = int(result.usage.get("completion_tokens") or 0)
+            run.total_prompt_tokens = (run.total_prompt_tokens or 0) + call_prompt_tokens
+            run.total_completion_tokens = (
+                run.total_completion_tokens or 0
+            ) + call_completion_tokens
 
             message = result.message
             tool_calls = message.get("tool_calls")
@@ -250,12 +250,22 @@ class ToolAgentService:
             )
 
             step_limit_hit = False
-            for tool_call in tool_calls:
+            # One model call can request several tools; its usage is charged to
+            # the first step only so per-step tokens still sum to the run totals.
+            for index, tool_call in enumerate(tool_calls):
                 if step_count >= settings.AGENT_MAX_STEPS:
                     step_limit_hit = True
                     break
                 step_count += 1
-                self._execute_step(run, ctx, step_count, tool_call, messages)
+                self._execute_step(
+                    run,
+                    ctx,
+                    step_count,
+                    tool_call,
+                    messages,
+                    prompt_tokens=call_prompt_tokens if index == 0 else 0,
+                    completion_tokens=call_completion_tokens if index == 0 else 0,
+                )
 
             if step_limit_hit:
                 run.status = "step_limit"
@@ -273,6 +283,8 @@ class ToolAgentService:
         step_number: int,
         tool_call: dict[str, Any],
         messages: list[dict[str, Any]],
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
     ) -> None:
         function = tool_call.get("function") or {}
         tool_name = function.get("name") or ""
@@ -309,6 +321,8 @@ class ToolAgentService:
             redacted=sanitized.redacted,
             truncated=sanitized.truncated,
             duration_seconds=round(duration, 3),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
         )
         self.db.add(step)
         self.db.commit()
