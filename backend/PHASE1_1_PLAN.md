@@ -1,6 +1,13 @@
 # Phase 1.1 plan: human confirmation for agent action tools
 
-Status: **plan only. No application code written.** Awaiting approval.
+Status: **implemented** on `phase1-1-confirmation`, in five commits. Approved with
+one change to the plan: after approval the run no longer ends with only a fixed
+sentence. The decision response carries a server-written summary built from the
+tool's own structured result, plus the raw result as `action_result` (cleaning
+before/after and steps; the model leaderboard and metrics for `train_model`). The
+model loop is still not resumed. Also added to the schema: `decided_at` on
+`AgentStepOut`. Everything else is as written below, including the 410 for an
+expired proposal and the 409 for a repeated decision.
 
 Scope: `apply_cleaning` and `train_model`, the two tools with `read_only=False` in
 `app/services/tool_registry.py`. Nothing else about the agent changes.

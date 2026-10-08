@@ -1,6 +1,9 @@
 # Phase 1 plan: LLM agent with tool calling
 
-Status: **plan only - no application code written yet.** Awaiting review.
+Status: **implemented and merged (PR #1).** The original plan text below is kept as
+written. One behaviour has since changed: action tools (`apply_cleaning`,
+`train_model`) no longer run inside `ask` even with `allow_actions=true`; they stop
+the run for the user's approval. See `backend/PHASE1_1_PLAN.md`.
 
 Source plan: `D:\Resumes\InsightFlow upgrade plan.md`, Phase 1.
 
