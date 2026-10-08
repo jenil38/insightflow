@@ -10,13 +10,19 @@
  * progress to report while it runs and none is invented. The waiting state says
  * what is happening and nothing more; the trace appears only once it is real.
  *
+ * Actions never run on their own. With "Allow actions" on, the agent can only
+ * propose cleaning or training: the run stops and this panel asks the user to
+ * approve or decline. Approving sends nothing but yes/no; the server runs the
+ * call it stored. The proposal is shown next to the user's own question so it is
+ * easy to see when it is not something they asked for.
+ *
  * Every tool result is dataset content that passed through the server's
  * sanitiser, which means it is untrusted by definition. It is rendered as text
  * (never as HTML, never through the Markdown renderer) so that a cell which
  * looks like markup stays a visible value rather than becoming one.
  */
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   AlertTriangle, Ban, Check, ChevronRight, CircleAlert, EyeOff, KeyRound,
@@ -86,6 +92,9 @@ const STEP_STATUS = {
   tool_error: { Icon: TriangleAlert, label: "Failed", tone: "danger", ring: "border-danger bg-danger-soft", text: "text-danger" },
   blocked_action: { Icon: Ban, label: "Blocked", tone: "neutral", ring: "border-line bg-canvas", text: "text-subtle" },
   rejected_unknown_tool: { Icon: CircleAlert, label: "Unknown tool", tone: "warning", ring: "border-warning bg-warning-soft", text: "text-warning" },
+  pending_confirmation: { Icon: CircleAlert, label: "Waiting for approval", tone: "warning", ring: "border-warning bg-warning-soft", text: "text-warning" },
+  rejected_by_user: { Icon: Ban, label: "Declined", tone: "neutral", ring: "border-line bg-canvas", text: "text-subtle" },
+  expired: { Icon: Ban, label: "Expired", tone: "neutral", ring: "border-line bg-canvas", text: "text-subtle" },
 };
 
 const FALLBACK_STATUS = {
@@ -97,6 +106,7 @@ const RUN_OUTCOME = {
   completed: { tone: "success", label: "Completed" },
   step_limit: { tone: "warning", label: "Stopped at the step limit" },
   error: { tone: "danger", label: "Failed" },
+  awaiting_confirmation: { tone: "warning", label: "Waiting for your approval" },
   running: { tone: "neutral", label: "Running" },
 };
 
@@ -111,6 +121,10 @@ function formatDuration(seconds) {
 export default function ToolAgentPanel({ datasetId, dataset }) {
   const [question, setQuestion] = useState("");
   const [allowActions, setAllowActions] = useState(false);
+  // The server's answer to the latest decision, shown in place of the ask
+  // response it follows. Cleared whenever a new question is asked.
+  const [decision, setDecision] = useState(null);
+  const queryClient = useQueryClient();
 
   // The agent and the Copilot are gated by the same GROQ_API_KEY, and this
   // endpoint already derives its questions from the dataset's real columns, so
@@ -122,11 +136,30 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
 
   const ask = useMutation({
     mutationFn: (text) => toolAgentApi.ask(datasetId, { question: text, allowActions }),
+    onMutate: () => {
+      setDecision(null);
+      decide.reset();
+    },
+  });
+
+  const decide = useMutation({
+    mutationFn: ({ runId, approve }) => toolAgentApi.decide(datasetId, runId, approve),
+    onSuccess: (result, { approve }) => {
+      setDecision(result);
+      if (!approve) return;
+      // Approved actions change the dataset or add a model version, so every
+      // cached view of it is now stale (same set Guided Analysis refreshes).
+      [
+        "dataset", "datasets", "datasets-status", "preview", "columns", "quality",
+        "clean-plan", "dashboard", "model-history", "explain", "train-options", "user-summary",
+      ].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+    },
   });
 
   const configured = suggestions.data?.copilot_enabled;
-  const run = ask.data;
+  const run = decision && decision.id === ask.data?.id ? decision : ask.data;
   const error = ask.isError ? normalizeError(ask.error) : null;
+  const decideError = decide.isError ? normalizeError(decide.error) : null;
 
   function submit(event) {
     event?.preventDefault();
@@ -188,10 +221,10 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
             checked={allowActions}
             onChange={setAllowActions}
             disabled={!configured || ask.isPending}
-            label="Allow actions"
+            label="Let the agent propose changes"
             description={
               allowActions
-                ? "The agent may apply the recommended cleaning or train a model. Cleaning keeps your original upload and can be reverted; training adds a new model version."
+                ? "The agent may propose applying the recommended cleaning or training a model. Nothing runs until you approve it. Cleaning keeps your original upload and can be reverted; training adds a new model version."
                 : "Read-only. The agent can analyse but cannot change the data or train anything - those tools are not offered to it at all."
             }
           />
@@ -234,7 +267,15 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
         />
       )}
 
-      {run && !ask.isPending && <RunResult run={run} dataset={dataset} />}
+      {run && !ask.isPending && (
+        <RunResult
+          run={run}
+          dataset={dataset}
+          deciding={decide.isPending}
+          decideError={decideError}
+          onDecide={(approve) => decide.mutate({ runId: run.id, approve })}
+        />
+      )}
     </div>
   );
 }
@@ -276,7 +317,7 @@ function ThinkingState({ allowActions }) {
               It runs to completion and returns everything at once, so there is nothing to show
               until it finishes.{" "}
               {allowActions
-                ? "Actions are allowed, so this may include cleaning or training and can take a few minutes."
+                ? "If the agent wants to change something it will stop and ask you first. This is usually a few seconds."
                 : "This is usually a few seconds."}
             </p>
           </div>
@@ -323,7 +364,7 @@ function AskError({ error, onRetry }) {
   );
 }
 
-function RunResult({ run, dataset }) {
+function RunResult({ run, dataset, onDecide, deciding, decideError }) {
   const outcome = RUN_OUTCOME[run.status] || RUN_OUTCOME.running;
   const steps = run.steps || [];
   const tokens = (run.total_prompt_tokens || 0) + (run.total_completion_tokens || 0);
@@ -335,6 +376,15 @@ function RunResult({ run, dataset }) {
           It ran out of allowed tool calls before reaching an answer. Everything it did get to is
           below. A narrower question usually finishes well inside the limit.
         </Alert>
+      )}
+
+      {run.status === "awaiting_confirmation" && run.pending_action && (
+        <ConfirmationCard
+          run={run}
+          onDecide={onDecide}
+          deciding={deciding}
+          decideError={decideError}
+        />
       )}
 
       {/* Trace */}
@@ -385,7 +435,92 @@ function RunResult({ run, dataset }) {
           </CardBody>
         </Card>
       )}
+
+      {run.action_result != null && (
+        <Card>
+          <CardHeader
+            title="What the action returned"
+            description="The tool's own result, exactly as it ran"
+          />
+          <CardBody>
+            {/* Dataset-derived content: rendered as text, never as markup. */}
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-canvas p-2 text-2xs text-muted">
+              {typeof run.action_result === "string"
+                ? run.action_result
+                : JSON.stringify(run.action_result, null, 2)}
+            </pre>
+          </CardBody>
+        </Card>
+      )}
     </div>
+  );
+}
+
+/**
+ * The agent's request to change something, waiting for a yes or no.
+ *
+ * Decline is the default focus so a stray Enter cannot approve. The warning for
+ * a redacted value is a hint, not detection: the sanitiser only catches
+ * phrasings it knows, so its absence says nothing about whether the proposal is
+ * what the user wanted. That is why the user's own question sits right here.
+ */
+function ConfirmationCard({ run, onDecide, deciding, decideError }) {
+  const pending = run.pending_action;
+  const flagged = (run.steps || []).some((step) => step.redacted);
+  const args =
+    pending.arguments && Object.keys(pending.arguments).length ? pending.arguments : null;
+
+  return (
+    <Card>
+      <CardHeader
+        title="The agent is asking permission"
+        description="Nothing has been changed yet"
+        actions={<Badge tone="warning">Needs your decision</Badge>}
+      />
+      <CardBody className="space-y-3">
+        <p className="text-sm text-ink">
+          <span className="font-medium">Proposed: </span>
+          {describeTool({ tool_name: pending.tool_name, arguments: pending.arguments })}
+        </p>
+
+        {args && (
+          <pre className="overflow-x-auto rounded-md border border-line bg-canvas p-2 text-2xs text-muted">
+            <code>{JSON.stringify(args, null, 2)}</code>
+          </pre>
+        )}
+
+        <p className="text-sm text-muted">
+          <span className="font-medium text-ink">You asked: </span>
+          {run.question}
+        </p>
+
+        {flagged && (
+          <Alert tone="warning" title="A value in your data looked like an instruction">
+            During this run a value in the data was replaced because it resembled an instruction
+            to the agent. Approve only if this change is something you asked for.
+          </Alert>
+        )}
+
+        <p className="text-xs text-subtle">
+          Approve only if this is what you wanted. Training can take a few minutes.
+        </p>
+
+        {decideError && (
+          <Alert tone="danger" title="That decision could not be applied">
+            <p>{decideError.message}</p>
+          </Alert>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => onDecide(false)} disabled={deciding} autoFocus>
+            Decline
+          </Button>
+          <Button icon={Check} onClick={() => onDecide(true)} loading={deciding}>
+            Approve
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 
