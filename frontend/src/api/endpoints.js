@@ -169,6 +169,15 @@ export const toolAgent = {
         allow_actions: allowActions,
       })
       .then((r) => r.data),
+
+  // Answer the action a run is waiting on. Only yes or no is sent: the server
+  // runs exactly what it stored when the model proposed the action, so there is
+  // deliberately no way to pass a tool name or arguments from here. Approving a
+  // train_model proposal runs the training inside this request.
+  decide: (id, runId, approve) =>
+    client
+      .post(`${V1}/datasets/${id}/agent/runs/${runId}/decision`, { approve })
+      .then((r) => r.data),
 };
 
 /* ------------------------------------------------------------------ report */

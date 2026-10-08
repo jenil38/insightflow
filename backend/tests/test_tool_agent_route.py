@@ -283,3 +283,319 @@ def test_action_requested_without_allow_actions_is_blocked_end_to_end(
         assert dataset.cleaned_path is None
     finally:
         db.close()
+
+
+# ------------------------------------------- action confirmation (Phase 1.1)
+
+
+def _big_csv(rows: int = 30) -> bytes:
+    lines = ["region,units,price,revenue"]
+    for i in range(rows):
+        units = 5 + (i * 7) % 23
+        price = 8 + (i * 3) % 11
+        lines.append(f"{['N', 'S', 'E', 'W'][i % 4]},{units},{price},{units * price}")
+    return ("\n".join(lines) + "\n").encode()
+
+
+def _propose(client, headers, dataset_id, mock_post, tool, arguments, allow=True):
+    mock_post.side_effect = None
+    mock_post.return_value = _mock_response(200, _tool_call_response(tool, arguments))
+    response = client.post(
+        f"/datasets/{dataset_id}/agent/ask",
+        headers=headers,
+        json={"question": "Fix it", "allow_actions": allow},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _decide(client, headers, dataset_id, run_id, approve, **extra):
+    return client.post(
+        f"/datasets/{dataset_id}/agent/runs/{run_id}/decision",
+        headers=headers,
+        json={"approve": approve, **extra},
+    )
+
+
+def _dataset_row(dataset_id):
+    db = SessionLocal()
+    try:
+        row = db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
+        db.expunge(row)
+        return row
+    finally:
+        db.close()
+
+
+@patch("app.services.chat_service.requests.post")
+def test_ask_returns_the_pending_action_and_changes_nothing(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    body = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    assert body["status"] == "awaiting_confirmation"
+    assert body["pending_action"] == {
+        "step_id": body["steps"][0]["id"],
+        "tool_name": "apply_cleaning",
+        "arguments": {},
+    }
+    assert body["steps"][0]["status"] == "pending_confirmation"
+    assert _dataset_row(dataset_id).cleaned_path is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_approve_runs_the_stored_action_and_returns_its_result(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    response = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["pending_action"] is None
+    assert body["steps"][0]["status"] == "ok"
+    assert body["steps"][0]["decided_at"] is not None
+    assert "Applied the recommended cleaning" in body["answer"]
+    assert body["action_result"]["applied"] is True
+    assert "before" in body["action_result"] and "after" in body["action_result"]
+    assert _dataset_row(dataset_id).cleaned_path is not None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_approving_train_model_trains_and_returns_the_metrics(mock_post, client):
+    client.post(
+        "/auth/register",
+        json={
+            "email": "trainer@example.com",
+            "password": "StrongPass1!",
+            "full_name": "Trainer",
+        },
+    )
+    tokens = client.post(
+        "/auth/login",
+        json={"email": "trainer@example.com", "password": "StrongPass1!"},
+    ).json()
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    dataset_id = client.post(
+        "/datasets/upload",
+        headers=headers,
+        files={"file": ("big.csv", io.BytesIO(_big_csv()), "text/csv")},
+    ).json()["id"]
+    run = _propose(
+        client,
+        headers,
+        dataset_id,
+        mock_post,
+        "train_model",
+        {"target_column": "revenue"},
+    )
+
+    db = SessionLocal()
+    try:
+        assert db.query(models.ModelRun).count() == 0
+    finally:
+        db.close()
+
+    response = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["steps"][0]["status"] == "ok"
+    assert "Trained models to predict `revenue`" in body["answer"]
+    assert body["action_result"]["target_column"] == "revenue"
+    assert body["action_result"]["results"]
+    db = SessionLocal()
+    try:
+        assert db.query(models.ModelRun).count() >= 1
+    finally:
+        db.close()
+
+
+@patch("app.services.chat_service.requests.post")
+def test_decline_runs_nothing(mock_post, client, auth_and_dataset):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    response = _decide(client, headers, dataset_id, run["id"], False)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["steps"][0]["status"] == "rejected_by_user"
+    assert body["steps"][0]["decided_at"] is not None
+    assert body["action_result"] is None
+    assert _dataset_row(dataset_id).cleaned_path is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_second_decision_is_refused(mock_post, client, auth_and_dataset):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+    assert _decide(client, headers, dataset_id, run["id"], True).status_code == 200
+
+    again = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert again.status_code == 409
+    assert again.json()["error_code"] == "already_decided"
+
+
+@patch("app.services.chat_service.requests.post")
+def test_overlapping_approvals_execute_the_action_once(
+    mock_post, client, auth_and_dataset, monkeypatch
+):
+    """A second approval that arrives while the first is still executing must
+    not run the action again: the first request has claimed the run."""
+    from app.services import tool_agent_service
+
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    real_execute = tool_agent_service.execute_tool
+    calls = []
+    overlapping = {}
+
+    def execute_and_overlap(ctx, name, arguments):
+        calls.append(name)
+        if len(calls) == 1:
+            overlapping["response"] = _decide(
+                client, headers, dataset_id, run["id"], True
+            )
+        return real_execute(ctx, name, arguments)
+
+    monkeypatch.setattr(tool_agent_service, "execute_tool", execute_and_overlap)
+
+    first = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert first.status_code == 200
+    assert overlapping["response"].status_code == 409
+    assert calls == ["apply_cleaning"]
+
+
+@patch("app.services.chat_service.requests.post")
+def test_another_users_run_and_dataset_are_not_found(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    client.post(
+        "/auth/register",
+        json={
+            "email": "intruder@example.com",
+            "password": "StrongPass1!",
+            "full_name": "Intruder",
+        },
+    )
+    tokens = client.post(
+        "/auth/login",
+        json={"email": "intruder@example.com", "password": "StrongPass1!"},
+    ).json()
+    other = {"Authorization": f"Bearer {tokens['access_token']}"}
+    other_dataset = client.post(
+        "/datasets/upload",
+        headers=other,
+        files={"file": ("mine.csv", io.BytesIO(SALES_CSV), "text/csv")},
+    ).json()["id"]
+
+    # Someone else's dataset id, and someone else's run id on their own dataset.
+    assert _decide(client, other, dataset_id, run["id"], True).status_code == 404
+    assert _decide(client, other, other_dataset, run["id"], True).status_code == 404
+    assert _dataset_row(dataset_id).cleaned_path is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_decision_requires_authentication(mock_post, client, auth_and_dataset):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    response = client.post(
+        f"/datasets/{dataset_id}/agent/runs/{run['id']}/decision",
+        json={"approve": True},
+    )
+
+    assert response.status_code == 401
+
+
+@patch("app.services.chat_service.requests.post")
+def test_an_expired_proposal_cannot_be_approved(
+    mock_post, client, auth_and_dataset, monkeypatch
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+    monkeypatch.setattr(settings, "AGENT_CONFIRM_TTL_MINUTES", 0)
+
+    response = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert response.status_code == 410
+    assert response.json()["error_code"] == "proposal_expired"
+    assert _dataset_row(dataset_id).cleaned_path is None
+    # The step records why; the proposal can no longer be decided.
+    monkeypatch.setattr(settings, "AGENT_CONFIRM_TTL_MINUTES", 30)
+    assert _decide(client, headers, dataset_id, run["id"], True).status_code == 409
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"tool_name": "train_model"},
+        {"arguments": {"target_column": "revenue"}},
+    ],
+)
+@patch("app.services.chat_service.requests.post")
+def test_the_client_cannot_supply_a_tool_or_arguments(
+    mock_post, extra, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    response = _decide(client, headers, dataset_id, run["id"], True, **extra)
+
+    assert response.status_code == 422
+    assert _dataset_row(dataset_id).cleaned_path is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_failing_approved_action_is_a_recorded_result_not_a_500(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset  # 4 rows: too few to train
+    run = _propose(
+        client,
+        headers,
+        dataset_id,
+        mock_post,
+        "train_model",
+        {"target_column": "revenue"},
+    )
+
+    response = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["steps"][0]["status"] == "tool_error"
+    assert "could not be completed" in body["answer"]
+    assert body["action_result"]["error"]
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_run_that_is_not_awaiting_a_decision_cannot_be_decided(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    mock_post.return_value = _mock_response(200, _plain_answer_response("Done."))
+    run = client.post(
+        f"/datasets/{dataset_id}/agent/ask",
+        headers=headers,
+        json={"question": "Hello", "allow_actions": True},
+    ).json()
+    assert run["status"] == "completed"
+
+    response = _decide(client, headers, dataset_id, run["id"], True)
+
+    assert response.status_code == 409

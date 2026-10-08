@@ -277,7 +277,7 @@ class AgentRun(Base):
     answer = Column(Text, nullable=True)
     status = Column(
         String, nullable=False, default="running"
-    )  # running | completed | error | step_limit
+    )  # running | completed | error | step_limit | awaiting_confirmation
     allow_actions = Column(Boolean, nullable=False, default=False)
     total_prompt_tokens = Column(Integer, nullable=True, default=0)
     total_completion_tokens = Column(Integer, nullable=True, default=0)
@@ -296,6 +296,24 @@ class AgentRun(Base):
     )
 
     __table_args__ = (Index("ix_agent_runs_user_created", "user_id", "created_at"),)
+
+    @property
+    def pending_action(self) -> dict | None:
+        """The action tool call waiting for the user's decision, if any.
+
+        Derived from the pending step rather than stored a second time, so the
+        run and its step cannot disagree about what is being proposed.
+        """
+        if self.status != "awaiting_confirmation":
+            return None
+        for step in self.steps:
+            if step.status == "pending_confirmation":
+                return {
+                    "step_id": step.id,
+                    "tool_name": step.tool_name,
+                    "arguments": step.arguments or {},
+                }
+        return None
 
 
 class AgentStep(Base):
@@ -322,6 +340,7 @@ class AgentStep(Base):
     status = Column(
         String, nullable=False
     )  # ok | invalid_arguments | blocked_action | tool_error | unknown_tool
+    # | pending_confirmation | rejected_by_user | expired
     result_summary = Column(Text, nullable=True)  # sanitised excerpt for the trace
     redacted = Column(Boolean, nullable=False, default=False)
     truncated = Column(Boolean, nullable=False, default=False)
@@ -331,6 +350,9 @@ class AgentStep(Base):
     # for it: this is what shows whether a slow run was the provider or the
     # analysis.
     duration_seconds = Column(Float, nullable=True)
+    # When a person approved or declined a proposed action. NULL for every step
+    # that never needed a decision, including rows from before this existed.
+    decided_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     run = relationship("AgentRun", back_populates="steps")
