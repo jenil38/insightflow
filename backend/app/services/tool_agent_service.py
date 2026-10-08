@@ -228,7 +228,9 @@ class ToolAgentService:
             result = _call_provider(budgeted_messages, tools_schema)
             call_prompt_tokens = int(result.usage.get("prompt_tokens") or 0)
             call_completion_tokens = int(result.usage.get("completion_tokens") or 0)
-            run.total_prompt_tokens = (run.total_prompt_tokens or 0) + call_prompt_tokens
+            run.total_prompt_tokens = (
+                run.total_prompt_tokens or 0
+            ) + call_prompt_tokens
             run.total_completion_tokens = (
                 run.total_completion_tokens or 0
             ) + call_completion_tokens
