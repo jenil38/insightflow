@@ -39,6 +39,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import requests
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -47,10 +48,11 @@ from ..core.exceptions import ValidationAppError
 from ..core.limits import check_agent_rate
 from ..core.logging_config import get_logger
 from .chat_service import ToolChatResult, _build_provider, _circuit
-from .tool_registry import ToolContext, execute_tool, tools_for
+from .tool_registry import ToolContext, execute_tool, get_tool, tools_for
 from .tool_sanitizer import (
     enforce_prompt_budget,
     fence_tool_result,
+    SanitizedResult,
     sanitize_tool_result,
 )
 
@@ -132,6 +134,46 @@ def _arguments_for_storage(parsed: Any) -> Any:
     if isinstance(parsed, (dict, list)):
         return parsed
     return {"_raw": str(parsed)[:500]}
+
+
+def step_fields_for(
+    outcome: Any, duration: float
+) -> tuple[dict[str, Any], SanitizedResult]:
+    """The `agent_steps` columns that describe a finished tool call, plus the
+    sanitised result they were derived from.
+
+    Shared by the loop and by the decision endpoint so a step that ran after
+    approval is recorded exactly like one that ran inside `ask`.
+    """
+    sanitized = sanitize_tool_result(outcome.for_model())
+    fields = {
+        "status": outcome.status,
+        "result_summary": sanitized.text[:MAX_RESULT_SUMMARY_CHARS],
+        "redacted": sanitized.redacted,
+        "truncated": sanitized.truncated,
+        "duration_seconds": round(duration, 3),
+    }
+    return fields, sanitized
+
+
+def describe_proposal(tool_name: str, arguments: dict[str, Any]) -> str:
+    """One server-written sentence for a proposed action. Never model text, so
+    the words the user reads next to Approve are not attacker-influenced."""
+    if tool_name == "apply_cleaning":
+        what = "apply the recommended cleaning to this dataset"
+    elif tool_name == "train_model":
+        target = arguments.get("target_column")
+        what = (
+            f"train models to predict `{str(target)[:80]}`"
+            if target
+            else "train models (the target column is chosen automatically)"
+        )
+    else:
+        what = f"run `{tool_name}`"
+    return (
+        f"The agent wants to {what}. Nothing has been changed yet. "
+        "Approve or decline below."
+    )
 
 
 class ToolAgentService:
@@ -259,6 +301,17 @@ class ToolAgentService:
                     step_limit_hit = True
                     break
                 step_count += 1
+                if allow_actions and self._propose_action(
+                    run,
+                    step_count,
+                    tool_call,
+                    prompt_tokens=call_prompt_tokens if index == 0 else 0,
+                    completion_tokens=call_completion_tokens if index == 0 else 0,
+                ):
+                    # An action tool never runs inside `ask`: the run stops here
+                    # and waits for the user. Any further calls the model made in
+                    # this turn are dropped, not executed.
+                    return
                 self._execute_step(
                     run,
                     ctx,
@@ -301,7 +354,7 @@ class ToolAgentService:
         outcome = execute_tool(ctx, tool_name, parsed_args)
         duration = time.monotonic() - started
 
-        sanitized = sanitize_tool_result(outcome.for_model())
+        fields, sanitized = step_fields_for(outcome, duration)
         fenced = fence_tool_result(tool_name, sanitized)
 
         messages.append(
@@ -318,13 +371,56 @@ class ToolAgentService:
             step_number=step_number,
             tool_name=tool_name,
             arguments=_arguments_for_storage(parsed_args),
-            status=outcome.status,
-            result_summary=sanitized.text[:MAX_RESULT_SUMMARY_CHARS],
-            redacted=sanitized.redacted,
-            truncated=sanitized.truncated,
-            duration_seconds=round(duration, 3),
+            **fields,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
         self.db.add(step)
         self.db.commit()
+
+    def _propose_action(
+        self,
+        run: models.AgentRun,
+        step_number: int,
+        tool_call: dict[str, Any],
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+    ) -> bool:
+        """Record an action tool call as a proposal instead of running it.
+
+        Returns True when the call was turned into a pending step (the caller
+        must stop the run). Returns False for anything else - a read-only tool,
+        an unknown tool, or arguments that would not validate - so those keep
+        the normal path and the model gets the usual error to correct.
+        """
+        function = tool_call.get("function") or {}
+        tool_name = function.get("name") or ""
+        tool = get_tool(tool_name)
+        if tool is None or tool.read_only:
+            return False
+
+        parsed_args = _parse_arguments(function.get("arguments"))
+        if not isinstance(parsed_args, dict):
+            return False
+        try:
+            tool.args_model(**parsed_args)
+        except ValidationError:
+            return False
+
+        self.db.add(
+            models.AgentStep(
+                run_id=run.id,
+                step_number=step_number,
+                tool_name=tool_name,
+                arguments=parsed_args,
+                status="pending_confirmation",
+                redacted=False,
+                truncated=False,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+        )
+        run.status = "awaiting_confirmation"
+        run.answer = describe_proposal(tool_name, parsed_args)
+        self.db.commit()
+        return True
