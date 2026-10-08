@@ -170,6 +170,12 @@ export const toolAgent = {
       })
       .then((r) => r.data),
 
+  // The run on this dataset still waiting for approval, or null. Lets a reloaded
+  // tab restore the confirmation card it would otherwise have lost. At most one
+  // run, and only while it can still be decided - not a run history.
+  pending: (id) =>
+    client.get(`${V1}/datasets/${id}/agent/runs/pending`).then((r) => r.data),
+
   // Answer the action a run is waiting on. Only yes or no is sent: the server
   // runs exactly what it stored when the model proposed the action, so there is
   // deliberately no way to pass a tool name or arguments from here. Approving a
