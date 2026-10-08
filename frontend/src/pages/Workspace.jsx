@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   BarChart3, Bot, Brain, Download, FileText, Gauge, MessageSquare, MoreHorizontal,
-  ShieldQuestion, Table2, Trash2, Wand2,
+  ShieldQuestion, Sparkles, Table2, Trash2, Wand2,
 } from "lucide-react";
 
 import { errorMessage } from "../api/client.js";
@@ -35,6 +35,7 @@ const ModelsPanel = lazy(() => import("../features/machine-learning/ModelsPanel.
 const ExplainPanel = lazy(() => import("../features/explainability/ExplainPanel.jsx"));
 const CopilotPanel = lazy(() => import("../features/copilot/CopilotPanel.jsx"));
 const AgentPanel = lazy(() => import("../features/agent/AgentPanel.jsx"));
+const ToolAgentPanel = lazy(() => import("../features/tool-agent/ToolAgentPanel.jsx"));
 import { formatBytes, formatDate, formatNumber } from "../lib/format.js";
 
 const TABS = [
@@ -45,6 +46,7 @@ const TABS = [
   { key: "models", label: "Models", icon: Brain },
   { key: "explain", label: "Explainability", icon: ShieldQuestion },
   { key: "copilot", label: "AI Copilot", icon: MessageSquare },
+  { key: "ask", label: "AI Agent", icon: Sparkles },
   { key: "agent", label: "Guided Analysis", icon: Bot },
 ];
 
@@ -207,6 +209,9 @@ export default function Workspace() {
         </TabPanel>
         <TabPanel tabKey="copilot" active={tab === "copilot"}>
           <CopilotPanel datasetId={id} dataset={info} />
+        </TabPanel>
+        <TabPanel tabKey="ask" active={tab === "ask"}>
+          <ToolAgentPanel datasetId={id} dataset={info} />
         </TabPanel>
         <TabPanel tabKey="agent" active={tab === "agent"}>
           <AgentPanel datasetId={id} />
