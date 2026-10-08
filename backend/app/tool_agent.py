@@ -40,3 +40,27 @@ def ask_agent(
         dataset, current_user.id, body.question, allow_actions=body.allow_actions
     )
     return run
+
+
+@router.post(
+    "/{dataset_id}/agent/runs/{run_id}/decision",
+    response_model=schemas.AgentDecisionResponse,
+)
+def decide_agent_action(
+    run_id: int,
+    body: schemas.AgentDecisionRequest,
+    dataset: models.Dataset = Depends(get_owned_dataset),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Approve or decline the action a run is waiting on.
+
+    The body is only `{"approve": bool}`. What runs is what the server stored
+    when the model proposed it, never anything from the request.
+    """
+    run, action_result = ToolAgentService(db).decide(
+        dataset, current_user.id, run_id, body.approve
+    )
+    response = schemas.AgentDecisionResponse.model_validate(run)
+    response.action_result = action_result
+    return response
