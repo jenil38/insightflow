@@ -23,6 +23,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
@@ -49,6 +50,26 @@ logger = get_logger("insightflow.copilot")
 # ---------------------------------------------------------------------------
 # LLM Provider abstraction
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ToolChatResult:
+    """Return type of :meth:`LLMProvider.chat_with_tools`.
+
+    *message* is the raw ``choices[0].message`` dict, which may contain a
+    ``tool_calls`` list when the model chose to call a function.  *usage*
+    carries the token counts the provider returned (prompt, completion,
+    total).  Both are preserved exactly as the provider sent them so the
+    caller can forward tool-call ids, inspect ``finish_reason``, and log
+    token spend without the provider layer having to anticipate every field
+    a future model might add.
+    """
+
+    message: dict[str, Any]
+    usage: dict[str, int] = field(default_factory=dict)
+    finish_reason: str = "stop"
+
+
 class LLMProvider:
     """Thin wrapper around an OpenAI-compatible chat completions endpoint."""
 
@@ -99,6 +120,87 @@ class LLMProvider:
             )
         try:
             return response.json()["choices"][0]["message"]["content"].strip()
+        except (KeyError, IndexError, ValueError) as exc:
+            raise ValidationAppError(
+                "The AI provider returned an unexpected response format.",
+                error_code="copilot_bad_response",
+                status_code=502,
+            ) from exc
+
+    # ---- tool-calling variant (used by the agent, not the Copilot) --------
+
+    def _check_status(self, response: requests.Response) -> None:
+        """Shared HTTP-status validation for both ``chat`` and ``chat_with_tools``."""
+        if response.status_code == 401:
+            raise ValidationAppError(
+                "The AI provider rejected the configured API key.",
+                error_code="copilot_bad_key",
+                status_code=502,
+            )
+        if response.status_code == 429:
+            raise ValidationAppError(
+                "The AI provider is rate-limiting this server. Wait a moment and try again.",
+                error_code="copilot_rate_limited",
+                status_code=429,
+            )
+        if response.status_code >= 400:
+            logger.error(
+                "Copilot provider error %s: %s",
+                response.status_code,
+                response.text[:400],
+            )
+            raise ValidationAppError(
+                f"The AI provider returned an error ({response.status_code}).",
+                error_code="copilot_provider_error",
+                status_code=502,
+            )
+
+    def chat_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        *,
+        tool_choice: str = "auto",
+        temperature: float = 0.2,
+        max_tokens: int = 1024,
+    ) -> ToolChatResult:
+        """Send a chat-completions request that includes an OpenAI-style
+        ``tools`` array.
+
+        Unlike :meth:`chat`, this returns the full message object so the
+        caller can read ``tool_calls``, and it exposes token usage so the
+        agent loop can enforce its budget.
+
+        The method does **not** touch ``chat()`` -- the Copilot keeps using
+        that simpler path unchanged.
+        """
+        url = f"{self.base_url}/chat/completions"
+        body: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        response = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=self.timeout,
+        )
+        self._check_status(response)
+        try:
+            data = response.json()
+            choice = data["choices"][0]
+            return ToolChatResult(
+                message=choice["message"],
+                usage=data.get("usage", {}),
+                finish_reason=choice.get("finish_reason", "stop"),
+            )
         except (KeyError, IndexError, ValueError) as exc:
             raise ValidationAppError(
                 "The AI provider returned an unexpected response format.",

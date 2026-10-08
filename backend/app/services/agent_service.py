@@ -14,7 +14,6 @@ per-step durations reported are measured, not simulated - the UI shows an honest
 
 from __future__ import annotations
 
-import os
 import time
 from typing import Any
 
@@ -28,7 +27,7 @@ from ..core.serialization import to_jsonable
 from ..schemas import CleaningConfig, TrainRequest
 from .analytics_service import analytics_service
 from .cleaning_service import cleaning_service
-from .dataframe_io import cleaned_path_for, load_dataset, write_dataframe
+from .dataframe_io import load_dataset
 from .explainability_service import ExplainabilityService
 from .ml_service import MLService
 from .profiling_service import profiling_service
@@ -114,14 +113,9 @@ class AgentService:
             with self._step(steps, "clean", "Clean data") as step:
                 plan = cleaning_service.recommend_config(state["df"])
                 config = CleaningConfig(**plan["recommended_config"])
-                full = load_dataset(dataset, prefer="original")
-                cleaned_df, report = cleaning_service.apply_config(full.df, config)
-
-                os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-                target = cleaned_path_for(dataset)
-                write_dataframe(cleaned_df, target)
-                dataset.cleaned_path = target
-                self.db.commit()
+                cleaned_df, report = cleaning_service.apply_and_persist(
+                    self.db, dataset, config
+                )
 
                 state["cleaned_rows"] = int(cleaned_df.shape[0])
                 state["cleaning"] = report

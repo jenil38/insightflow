@@ -151,6 +151,26 @@ export const agent = {
       .then((r) => r.data),
 };
 
+/* -------------------------------------------------- tool-calling AI agent */
+
+// Distinct from `agent` above: that one runs the fixed Guided Analysis
+// pipeline, this one lets the model choose which tools to call.
+//
+// No client timeout, matching every other call here (the shared client sets
+// none). The route is synchronous and a run that trains a model can take
+// minutes; the server already bounds it with GROQ_TIMEOUT_SECONDS per model
+// call and AGENT_MAX_STEPS overall, so a client timeout would only abandon a
+// run that is still legitimately working.
+export const toolAgent = {
+  ask: (id, { question, allowActions = false }) =>
+    client
+      .post(`${V1}/datasets/${id}/agent/ask`, {
+        question,
+        allow_actions: allowActions,
+      })
+      .then((r) => r.data),
+};
+
 /* ------------------------------------------------------------------ report */
 
 export const reports = {

@@ -10,13 +10,18 @@ upload - it writes a separate file that can be discarded to revert.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from sqlalchemy.orm import Session
 
+from .. import models
+from ..core.config import settings
 from ..core.serialization import dataframe_records, to_jsonable
 from ..schemas import CleaningConfig
+from .dataframe_io import cleaned_path_for, load_dataset, write_dataframe
 from .profiling_service import infer_semantic_type
 
 
@@ -299,6 +304,35 @@ class CleaningService:
         return work, to_jsonable(report)
 
     # ------------------------------------------------------------- preview
+    def apply_and_persist(
+        self, db: Session, dataset: models.Dataset, config: CleaningConfig
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
+        """Clean the dataset's original upload and write the cleaned copy to disk.
+
+        `apply_config` above is deliberately pure, so persisting the result used
+        to be inlined at both call sites - the /clean/apply route and the Guided
+        Analysis pipeline - and the two had drifted apart: only the route
+        recorded `cleaning_log`, so a dataset cleaned by Guided Analysis reported
+        an empty audit log afterwards. Both callers now go through here, which is
+        what keeps the stored state identical whichever path did the cleaning.
+
+        The original upload is never modified: the cleaned frame goes to a
+        separate path, and that is what makes /clean/revert a safe operation
+        rather than a destructive one.
+        """
+        loaded = load_dataset(dataset, prefer="original")
+        cleaned_df, report = self.apply_config(loaded.df, config)
+
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        target_path = cleaned_path_for(dataset)
+        write_dataframe(cleaned_df, target_path)
+
+        dataset.cleaned_path = target_path
+        dataset.cleaning_log = report.get("steps", [])
+        db.commit()
+
+        return cleaned_df, report
+
     def preview(
         self, df: pd.DataFrame, config: CleaningConfig, sample_rows: int = 10
     ) -> dict[str, Any]:
