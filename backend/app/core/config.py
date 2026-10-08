@@ -79,6 +79,21 @@ class Settings(BaseSettings):
     COPILOT_SAMPLE_ROWS: int = 5
     COPILOT_HISTORY_TURNS: int = 8
 
+    # --- AI agent (tool calling) ---
+    # A tool result is untrusted data pasted straight into the next prompt, so
+    # it needs a hard ceiling: one profile of a wide dataset can otherwise fill
+    # the whole context in a single step, leaving no room for the agent to
+    # continue reasoning.
+    AGENT_MAX_TOOL_RESULT_CHARS: int = 4_000
+    # Ceiling on the assembled prompt for one step. Counted in characters, not
+    # tokens: the provider reports token usage only after the call, so a local
+    # character budget is the only limit that can be enforced beforehand.
+    AGENT_MAX_PROMPT_CHARS: int = 24_000
+    # How many agent runs a single user may start per hour.
+    MAX_AGENT_RUNS_PER_HOUR: int = 30
+    # Hard ceiling on tool-calling steps in a single agent run.
+    AGENT_MAX_STEPS: int = 15
+
     # --- Email (logs instead of sending unless SMTP_HOST is set) ---
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

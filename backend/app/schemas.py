@@ -343,6 +343,53 @@ class SuggestedQuestions(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Tool-calling agent (Phase 1)
+# ---------------------------------------------------------------------------
+
+
+class AgentAskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    allow_actions: bool = Field(
+        default=False,
+        description=(
+            "Whether the agent may apply cleaning or train a model. When false, "
+            "those tools are not offered to the model at all."
+        ),
+    )
+
+
+class AgentStepOut(BaseModel):
+    step_number: int
+    tool_name: str
+    status: str
+    redacted: bool
+    truncated: bool
+    result_summary: str | None = None
+    # What the model actually sent, before Pydantic validation accepted or
+    # rejected it. Returned so a trace can show the invented field that caused
+    # an invalid_arguments step, not merely that one happened.
+    arguments: Any | None = None
+    duration_seconds: float | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AgentAskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: str
+    question: str
+    answer: str | None = None
+    allow_actions: bool
+    steps: list[AgentStepOut] = Field(default_factory=list)
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    duration_seconds: float | None = None
+
+
+# ---------------------------------------------------------------------------
 # Reports
 # ---------------------------------------------------------------------------
 
