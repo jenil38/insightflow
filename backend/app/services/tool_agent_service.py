@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
@@ -44,11 +44,11 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..core.config import settings
-from ..core.exceptions import ValidationAppError
+from ..core.exceptions import ConflictError, NotFoundError, ValidationAppError
 from ..core.limits import check_agent_rate
 from ..core.logging_config import get_logger
 from .chat_service import ToolChatResult, _build_provider, _circuit
-from .tool_registry import ToolContext, execute_tool, get_tool, tools_for
+from .tool_registry import ToolContext, ToolOutcome, execute_tool, get_tool, tools_for
 from .tool_sanitizer import (
     enforce_prompt_budget,
     fence_tool_result,
@@ -174,6 +174,39 @@ def describe_proposal(tool_name: str, arguments: dict[str, Any]) -> str:
         f"The agent wants to {what}. Nothing has been changed yet. "
         "Approve or decline below."
     )
+
+
+def summarize_outcome(tool_name: str, outcome: ToolOutcome) -> str:
+    """Server-written sentence for what an approved action did. Built only from
+    the tool's own structured result, never from model text. The raw result is
+    returned alongside it, so this is the headline and not the whole story."""
+    if not outcome.ok:
+        return f"The action could not be completed: {(outcome.error or 'unknown error')[:300]}"
+    value = outcome.value if isinstance(outcome.value, dict) else {}
+    if tool_name == "apply_cleaning":
+        before = value.get("before") or {}
+        after = value.get("after") or {}
+        steps = value.get("steps") or []
+        return (
+            "Applied the recommended cleaning: "
+            f"{before.get('rows')} to {after.get('rows')} rows, "
+            f"{before.get('missing_values')} to {after.get('missing_values')} "
+            f"missing values, {len(steps)} cleaning step(s). "
+            "The original upload is kept."
+        )
+    if tool_name == "train_model":
+        return (
+            f"Trained models to predict `{value.get('target_column')}` on "
+            f"{value.get('rows_used')} rows. Best model: {value.get('best_model')}."
+        )
+    return f"Ran `{tool_name}`."
+
+
+def _as_json_or_text(text: str) -> Any:
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
 
 
 class ToolAgentService:
@@ -424,3 +457,105 @@ class ToolAgentService:
         run.answer = describe_proposal(tool_name, parsed_args)
         self.db.commit()
         return True
+
+    # --------------------------------------------------------- decision
+    def decide(
+        self,
+        dataset: models.Dataset,
+        user_id: int,
+        run_id: int,
+        approve: bool,
+    ) -> tuple[models.AgentRun, Any]:
+        """Apply the user's answer to a proposed action.
+
+        Runs exactly the call stored on the pending step - the caller supplies
+        only yes or no, so this cannot be used to invoke a tool with arguments
+        of the client's choosing. Returns the run and, when the action ran, what
+        the tool returned.
+        """
+        run = (
+            self.db.query(models.AgentRun)
+            .filter(
+                models.AgentRun.id == run_id,
+                models.AgentRun.dataset_id == dataset.id,
+                models.AgentRun.user_id == user_id,
+            )
+            .first()
+        )
+        if run is None:
+            raise NotFoundError("Agent run not found.", error_code="run_not_found")
+
+        step = next((s for s in run.steps if s.status == "pending_confirmation"), None)
+        if run.status != "awaiting_confirmation" or step is None:
+            raise ConflictError(
+                "This run has no action waiting for a decision.",
+                error_code="already_decided",
+            )
+
+        # Claim the run before doing anything else. The compare-and-set is what
+        # makes a double click, or two tabs, run the action once: only the
+        # request whose UPDATE matches a row proceeds.
+        claimed = (
+            self.db.query(models.AgentRun)
+            .filter(
+                models.AgentRun.id == run.id,
+                models.AgentRun.status == "awaiting_confirmation",
+            )
+            .update({"status": "running"}, synchronize_session=False)
+        )
+        self.db.commit()
+        if claimed != 1:
+            raise ConflictError(
+                "This run has no action waiting for a decision.",
+                error_code="already_decided",
+            )
+        self.db.refresh(run)
+        self.db.refresh(step)
+
+        now = datetime.now(timezone.utc)
+        proposed_at = step.created_at
+        if proposed_at is not None and proposed_at.tzinfo is None:
+            proposed_at = proposed_at.replace(tzinfo=timezone.utc)
+        ttl = timedelta(minutes=settings.AGENT_CONFIRM_TTL_MINUTES)
+        if proposed_at is not None and now - proposed_at >= ttl:
+            step.status = "expired"
+            step.decided_at = now
+            run.status = "completed"
+            run.answer = (
+                "This proposal expired before it was approved. Nothing was changed."
+            )
+            self.db.commit()
+            raise ValidationAppError(
+                "This proposal expired. Ask the agent again.",
+                error_code="proposal_expired",
+                status_code=410,
+            )
+
+        step.decided_at = now
+        if not approve:
+            step.status = "rejected_by_user"
+            run.status = "completed"
+            run.answer = "Declined. Nothing was changed."
+            self.db.commit()
+            return run, None
+
+        ctx = ToolContext(
+            db=self.db, dataset=dataset, user_id=user_id, allow_actions=True
+        )
+        started = time.monotonic()
+        try:
+            outcome = execute_tool(ctx, step.tool_name, step.arguments)
+        except Exception as exc:
+            run.status = "error"
+            run.error_message = str(exc)[:2000]
+            self.db.commit()
+            raise
+        duration = time.monotonic() - started
+
+        fields, sanitized = step_fields_for(outcome, duration)
+        for key, value in fields.items():
+            setattr(step, key, value)
+        run.status = "completed"
+        run.answer = summarize_outcome(step.tool_name, outcome)
+        self.db.commit()
+        return run, _as_json_or_text(sanitized.text)
