@@ -359,6 +359,7 @@ class AgentAskRequest(BaseModel):
 
 
 class AgentStepOut(BaseModel):
+    id: int
     step_number: int
     tool_name: str
     status: str
@@ -370,9 +371,18 @@ class AgentStepOut(BaseModel):
     # an invalid_arguments step, not merely that one happened.
     arguments: Any | None = None
     duration_seconds: float | None = None
+    decided_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+
+class AgentPendingAction(BaseModel):
+    """An action the model asked for that has not run and needs a decision."""
+
+    step_id: int
+    tool_name: str
+    arguments: Any = Field(default_factory=dict)
 
 
 class AgentAskResponse(BaseModel):
@@ -387,6 +397,26 @@ class AgentAskResponse(BaseModel):
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
     duration_seconds: float | None = None
+    pending_action: AgentPendingAction | None = None
+
+
+class AgentDecisionRequest(BaseModel):
+    """The user's answer to a proposed action.
+
+    Deliberately only a yes/no: the server runs exactly what it stored when the
+    model proposed the action. Extra fields are rejected so a client cannot
+    supply a tool name or arguments of its own.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    approve: bool
+
+
+class AgentDecisionResponse(AgentAskResponse):
+    # What the approved tool actually returned (cleaning before/after, model
+    # leaderboard). None when the action was declined or expired.
+    action_result: Any | None = None
 
 
 # ---------------------------------------------------------------------------

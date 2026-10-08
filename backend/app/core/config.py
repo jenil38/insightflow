@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     MAX_AGENT_RUNS_PER_HOUR: int = 30
     # Hard ceiling on tool-calling steps in a single agent run.
     AGENT_MAX_STEPS: int = 15
+    # How long a proposed action waits for the user's decision. After this the
+    # proposal expires instead of being runnable against a dataset that may have
+    # changed since it was proposed.
+    AGENT_CONFIRM_TTL_MINUTES: int = 30
 
     # --- Email (logs instead of sending unless SMTP_HOST is set) ---
     SMTP_HOST: str = ""
