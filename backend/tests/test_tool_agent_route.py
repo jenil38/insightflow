@@ -126,6 +126,9 @@ def test_ask_returns_the_answer_and_the_step_trace(mock_post, client, auth_and_d
     assert len(body["steps"]) == 1
     assert body["steps"][0]["tool_name"] == "get_dataset_overview"
     assert body["steps"][0]["status"] == "ok"
+    # The trace fields the UI renders must actually reach the client.
+    assert body["steps"][0]["arguments"] == {}
+    assert body["steps"][0]["duration_seconds"] is not None
     assert body["total_prompt_tokens"] == 150
     assert body["total_completion_tokens"] == 30
 

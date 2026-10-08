@@ -327,6 +327,10 @@ class AgentStep(Base):
     truncated = Column(Boolean, nullable=False, default=False)
     prompt_tokens = Column(Integer, nullable=True)
     completion_tokens = Column(Integer, nullable=True)
+    # Wall-clock time for the tool call itself, not the model turn that asked
+    # for it: this is what shows whether a slow run was the provider or the
+    # analysis.
+    duration_seconds = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     run = relationship("AgentRun", back_populates="steps")

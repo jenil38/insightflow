@@ -190,6 +190,10 @@ def test_one_tool_call_then_an_answer(mock_post, uploaded):
     assert steps[0].tool_name == "get_dataset_overview"
     assert steps[0].status == "ok"
     assert steps[0].redacted is False
+    # Recorded for the trace: what the model sent, and how long the tool took.
+    assert steps[0].arguments == {}
+    assert steps[0].duration_seconds is not None
+    assert steps[0].duration_seconds >= 0
 
 
 @patch("app.services.chat_service.requests.post")
@@ -245,6 +249,30 @@ def test_action_requested_without_permission_is_blocked_not_run(mock_post, uploa
     assert dataset.cleaned_path is None
     step = db.query(models.AgentStep).filter(models.AgentStep.run_id == run.id).first()
     assert step.status == "blocked_action"
+
+
+@patch("app.services.chat_service.requests.post")
+def test_rejected_arguments_are_recorded_as_the_model_sent_them(mock_post, uploaded):
+    """The point of storing arguments pre-validation: the trace has to show the
+    invented field, not just that validation failed."""
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(
+            200,
+            _tool_call_response(
+                "profile_column", {"column": "revenue", "dataset_id": 99}
+            ),
+        ),
+        _mock_response(200, _plain_answer_response("I had to correct that call.")),
+    ]
+
+    run = ToolAgentService(db).ask(
+        dataset, user_id, "Profile revenue", allow_actions=False
+    )
+
+    step = db.query(models.AgentStep).filter(models.AgentStep.run_id == run.id).first()
+    assert step.status == "invalid_arguments"
+    assert step.arguments == {"column": "revenue", "dataset_id": 99}
 
 
 # ----------------------------------------------------------------- step limit
