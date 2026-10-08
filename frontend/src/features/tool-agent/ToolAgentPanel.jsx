@@ -79,6 +79,25 @@ const TOOL_LABELS = {
   },
 };
 
+/**
+ * What an action would do, phrased as the request being approved. The trace
+ * labels above are present-progressive ("Applying the cleaning plan") because
+ * they describe something that ran; next to Approve and Decline that reads as
+ * already happening, which is the opposite of what the card is saying.
+ */
+function describeProposal(pending) {
+  const args = pending.arguments;
+  if (pending.tool_name === "apply_cleaning") {
+    return "Apply the recommended cleaning to this dataset";
+  }
+  if (pending.tool_name === "train_model") {
+    return typeof args?.target_column === "string" && args.target_column
+      ? `Train models to predict ${args.target_column}`
+      : "Train models (the target column is chosen automatically)";
+  }
+  return `Run ${pending.tool_name || "an unknown tool"}`;
+}
+
 function describeTool(step) {
   const entry = TOOL_LABELS[step.tool_name];
   if (!entry) return step.tool_name || "Unknown tool";
@@ -480,7 +499,7 @@ function ConfirmationCard({ run, onDecide, deciding, decideError }) {
       <CardBody className="space-y-3">
         <p className="text-sm text-ink">
           <span className="font-medium">Proposed: </span>
-          {describeTool({ tool_name: pending.tool_name, arguments: pending.arguments })}
+          {describeProposal(pending)}
         </p>
 
         {args && (
