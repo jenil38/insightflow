@@ -72,7 +72,7 @@ class Settings(BaseSettings):
 
     # --- AI Copilot (Groq) ---
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
     GROQ_TIMEOUT_SECONDS: int = 45
     # How many sample rows reach the LLM. Deliberately small: the Copilot is
     # grounded on computed statistics, not on raw record dumps.
