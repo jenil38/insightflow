@@ -199,7 +199,9 @@ def test_one_tool_call_then_an_answer(mock_post, uploaded):
 
 
 @patch("app.services.chat_service.requests.post")
-def test_parallel_tool_calls_charge_the_model_call_to_the_first_step(mock_post, uploaded):
+def test_parallel_tool_calls_charge_the_model_call_to_the_first_step(
+    mock_post, uploaded
+):
     db, dataset, user_id = uploaded
 
     two_calls = _tool_call_response("get_dataset_overview", {})
@@ -223,7 +225,10 @@ def test_parallel_tool_calls_charge_the_model_call_to_the_first_step(mock_post, 
         .order_by(models.AgentStep.step_number)
         .all()
     )
-    assert [(s.prompt_tokens, s.completion_tokens) for s in steps] == [(100, 20), (0, 0)]
+    assert [(s.prompt_tokens, s.completion_tokens) for s in steps] == [
+        (100, 20),
+        (0, 0),
+    ]
 
 
 @patch("app.services.chat_service.requests.post")
