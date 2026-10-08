@@ -279,7 +279,13 @@ class ToolAgentService:
         call_id = tool_call.get("id")
 
         parsed_args = _parse_arguments(function.get("arguments"))
+
+        # Timed around execute_tool only. Sanitising and the model turn are
+        # excluded on purpose: this number answers "was the analysis slow", and
+        # mixing in provider latency would make it answer neither question.
+        started = time.monotonic()
         outcome = execute_tool(ctx, tool_name, parsed_args)
+        duration = time.monotonic() - started
 
         sanitized = sanitize_tool_result(outcome.for_model())
         fenced = fence_tool_result(tool_name, sanitized)
@@ -302,6 +308,7 @@ class ToolAgentService:
             result_summary=sanitized.text[:MAX_RESULT_SUMMARY_CHARS],
             redacted=sanitized.redacted,
             truncated=sanitized.truncated,
+            duration_seconds=round(duration, 3),
         )
         self.db.add(step)
         self.db.commit()

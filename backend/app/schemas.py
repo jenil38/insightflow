@@ -365,6 +365,11 @@ class AgentStepOut(BaseModel):
     redacted: bool
     truncated: bool
     result_summary: str | None = None
+    # What the model actually sent, before Pydantic validation accepted or
+    # rejected it. Returned so a trace can show the invented field that caused
+    # an invalid_arguments step, not merely that one happened.
+    arguments: Any | None = None
+    duration_seconds: float | None = None
 
     class Config:
         from_attributes = True
