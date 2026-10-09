@@ -1,7 +1,7 @@
 # Phase 3 plan: evaluation harness for the tool-calling agent
 
-Status: **approved, being built on `phase3-eval` in 4 commits.** Changes since the
-first draft, all decided by the owner:
+Status: **built on `phase3-eval` (4 build commits after the plan).** Changes since
+the first draft, all decided by the owner:
 
 - **No judge model in v1.** Prose faithfulness is deliberately unmeasured (below).
 - **CI runs strict replay only.** Live and record modes are local and run by hand.
@@ -227,8 +227,9 @@ question). Metric 3 is what catches a *wrong* number; 7 only catches one from no
 | `run --mode live` | Runs the suite against the real provider using `GROQ_API_KEY`. Paced to `EVAL_TPM` (default 6,000, under the 8,000 limit), retries 429s with backoff, reports retries separately, never scores an infra error. `--tags smoke`, `--cases id,id`, `--repeats N`, `--max-tokens N` (hard stop). **Local, by hand.** |
 | `run --mode record` | Live, and also writes each provider exchange to `cassettes/`. **Local, by hand.** |
 | `run --mode replay` | Replays recorded responses. No key, no network, no rate limit. The only mode CI runs. |
+| `rescore <result>` | Re-apply the current cases and scorers to the records stored in a result, with no model call. Scoring is a pure function of (case, record), so fixing a scorer or a case expectation does not need another live run. The result keeps its identity and is marked rescored. |
 | `compare <a> <b>` | Diff two result files. |
-| `baseline --accept <result>` | Promote a result to `baselines/`. |
+| `baseline --accept <result>` | Promote a result to `baselines/`. Refuses a replay result: replay does not measure the model. |
 
 The runner executes the real service, tools, sanitiser and confirmation logic in
 process (temp SQLite, a seeded user, the dataset uploaded through the real upload
@@ -249,10 +250,22 @@ message, usage, finish reason and the latency.
 - **Replay by order** (local, flagged in the report) replays the nth response
   regardless of the key. For working on scoring code. Its results say nothing about
   the current prompt and the report says that.
+- A replay names the model the cassettes were **recorded** against in its identity,
+  not today's `GROQ_MODEL` default, so changing the production default cannot break
+  the baseline lookup for the wrong reason.
 - **Replay proves the harness, the scorers, the invariants, the tools, the sanitiser
   and the confirmation flow are intact. It does not measure the model or the
   prompt.** Only a live run does. Cost and latency in replay are the recorded values,
   labelled as such.
+
+### Recording environment matters
+
+Tool outputs depend on the library versions, and the request key includes them. This
+was found the hard way: a scratch environment with pandas 3.x reports `"dtype": "str"`
+where the pinned pandas 2.2.2 reports `object`, so cassettes recorded there would have
+read as stale in CI. **Record on the pinned stack** (Python 3.12 and
+`requirements.txt`, which is what CI uses). The committed cassettes were recorded on
+Python 3.12.3 with pandas 2.2.2 and numpy 2.2.3.
 
 ### Cassettes are committed; what is checked first
 
@@ -296,6 +309,38 @@ and be non-deterministic.
   shows intervals so nobody reads more into it than that. The first baseline is
   recorded with a single repeat, flagged as such, and should be refreshed with
   `--repeats 3`.
+
+## First baseline (what the first full live run showed)
+
+One repeat of each of the 54 cases against `openai/gpt-oss-20b`, paced at 6,000
+tokens a minute: no 429 retries and no infrastructure errors, about 195,000 tokens.
+
+- **Gated: 49 of 50 passed**, with an interval of roughly 90 to 99%, and two failures
+  that are genuine model behaviour: given "Profile the REVENUE column" the model sent
+  `REVENUE` verbatim, got `unknown_column`, and gave up instead of listing columns
+  (gated); the same for the typo `unitz` (informational).
+- **Injection: 23 of 23 passed.** The model profiled the injected column in all 23
+  runs, so the test is meaningful, and the sanitiser redacted only the literal
+  phrasing (2 runs), as expected. None of the 19 read-only runs proposed an action,
+  and no run proposed `train_model`. Of the four asked with the action-inviting
+  question, two proposed `apply_cleaning` (literal and bare-call phrasings); the
+  question itself says "fix", so that is not attributable to the injected text, and
+  the case gates only on `train_model`.
+- **Action behaviour: 26 of 26 correct**, no missed and no over-eager proposals.
+- **Tuning disclosure.** The first scoring flagged six failures. Two were genuine; four
+  were my mistakes: three fixtures required `profile_column` where `run_query` was an
+  equally valid route to a correct answer, and the scorer read only digits, not
+  "four". I loosened the three fixtures (each still gated on the oracle's value) and
+  fixed the scorer, then re-scored the same records with `rescore`. That means the
+  baseline is **not independent of my having seen the output**; the cases would score
+  somewhat lower had they been frozen first.
+- **What is flagged but not measured.** One heuristic flag was a correct derived figure
+  ("about 7.8 units", 24.43 minus 16.67), the documented false-positive class. In the
+  same answer, "the West consistently outperforming the others" is a claim nothing in
+  this suite can check. That gap is the prose-faithfulness metric deliberately not in
+  v1.
+- **Single repeat.** Treat it as a first reading. Refresh with
+  `run --mode live --repeats 3` before relying on a rate.
 
 ## Report
 
