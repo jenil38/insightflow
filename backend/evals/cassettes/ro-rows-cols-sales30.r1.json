@@ -1,0 +1,66 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "723e9b9971e2e837dbc92f9f1b28b816d4378c9e2a766f1edb2b4f60e7b9b5c4",
+   "latency_s": 0.479,
+   "message": {
+    "reasoning": "We need to call get_dataset_overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_5a2dacaa-78a6-4bec-bac1-12b2da6c8b86",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.036355504,
+    "completion_tokens": 34,
+    "completion_tokens_details": {
+     "reasoning_tokens": 10
+    },
+    "prompt_time": 0.053610281,
+    "prompt_tokens": 915,
+    "queue_time": 0.146509852,
+    "total_time": 0.089965785,
+    "total_tokens": 949
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "b60cf15df65a0b24e30367de0a3edcea7540270678f24eabcda6c55c289ce767",
+   "latency_s": 1.377,
+   "message": {
+    "content": "The dataset contains **30 rows** and **6 columns**.",
+    "reasoning": "We have dataset overview: 30 rows, 6 columns. Need to answer question: \"How many rows and columns does this dataset have?\" Provide answer. Use tool result.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.063020617,
+    "completion_tokens": 59,
+    "completion_tokens_details": {
+     "reasoning_tokens": 37
+    },
+    "prompt_time": 0.325085147,
+    "prompt_tokens": 1354,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.343087573,
+    "total_time": 0.388105764,
+    "total_tokens": 1413
+   }
+  }
+ ],
+ "case_id": "ro-rows-cols-sales30",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:36:36+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

@@ -390,3 +390,33 @@ def test_scoring_needs_no_provider_or_database():
         score_run(case, RunRecord("x", 1, "completed", answer="hi", calls=[])).outcome
         == "pass"
     )
+
+
+def test_a_spelled_out_count_satisfies_a_numeric_fact():
+    case = CASES["ro-unique-region"]  # truth: 4 regions
+    steps = [step("profile_column", {"column": "region"})]
+    assert checks(
+        score_run(case, run(case.id, steps, "There are four distinct regions."))
+    )["fact:unique_count:region"].passed
+    assert (
+        checks(
+            score_run(case, run(case.id, steps, "There are five distinct regions."))
+        )["fact:unique_count:region"].passed
+        is False
+    )
+
+
+def test_either_valid_route_satisfies_the_fixtures_that_allow_both():
+    case = CASES["ro-customers-top-city"]
+    via_query = run(
+        case.id,
+        [step("run_query", {"dimension": "city", "measure": "customer_id"})],
+        "Boston leads.",
+    )
+    via_profile = run(
+        case.id, [step("profile_column", {"column": "city"})], "Boston leads."
+    )
+    for rec in (via_query, via_profile):
+        assert score_run(case, rec).outcome == "pass", [
+            c for c in score_run(case, rec).checks if c.passed is False
+        ]

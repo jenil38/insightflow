@@ -168,3 +168,14 @@ def test_unknown_expectation_fields_are_rejected():
         Case(id="x", category="read_only", dataset="sales_8", question="q", wat=1)
     with pytest.raises(Exception):
         Expect(action="propose:delete_everything")
+
+
+def test_spelled_out_numbers_are_read_and_pronouns_are_not():
+    assert extract_numbers("There are four distinct regions.") == [(4.0, 0, False)]
+    assert extract_numbers("About twenty-one rows and thirty columns")[:2] == [
+        (21.0, 0, False),
+        (30.0, 0, False),
+    ]
+    assert extract_numbers("One of the columns is missing.") == []
+    assert extract_numbers("There is one missing value.") == [(1.0, 0, False)]
+    assert extract_numbers("someone phoned the zoning office") == []

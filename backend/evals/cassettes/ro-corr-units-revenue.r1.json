@@ -1,0 +1,66 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "3729b40c66caa56f62648140f65fa6a794b84fbc23bcba61c9dfb23e8d49d5a2",
+   "latency_s": 0.403,
+   "message": {
+    "reasoning": "We need correlation between units and revenue. Use get_correlations.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_correlations"
+      },
+      "id": "fc_eb4f4686-62c9-43bf-a514-56ffea196068",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.04197921,
+    "completion_tokens": 37,
+    "completion_tokens_details": {
+     "reasoning_tokens": 14
+    },
+    "prompt_time": 0.053979271,
+    "prompt_tokens": 913,
+    "queue_time": 0.095338404,
+    "total_time": 0.095958481,
+    "total_tokens": 950
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "896fed56f0ce6dabcc4fe4bfb7b8a9b243d1c491510c37ee2c05e65c4f53d94b",
+   "latency_s": 1.265,
+   "message": {
+    "content": "The Pearson correlation between **units** and **revenue** is **0.78**.  \nThis indicates a strong positive association: as the number of units sold increases, revenue tends to rise as well.  \nRemember that correlation does not imply causation; other factors (e.g., price changes, promotions, seasonality) could also influence revenue.",
+    "reasoning": "We have correlation 0.781 between units and revenue. Need to answer plain English. Also mention correlation is Pearson, association only. Use tool result.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.121983373,
+    "completion_tokens": 112,
+    "completion_tokens_details": {
+     "reasoning_tokens": 32
+    },
+    "prompt_time": 0.023799773,
+    "prompt_tokens": 1062,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.443562702,
+    "total_time": 0.145783146,
+    "total_tokens": 1174
+   }
+  }
+ ],
+ "case_id": "ro-corr-units-revenue",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:41:41+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

@@ -245,14 +245,25 @@
   "question": "Which city has the most customers?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "city"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "dimension": "city"
+     },
+     "optional": true
     }
    ],
    "facts": [
