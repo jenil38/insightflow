@@ -83,11 +83,14 @@ cannot be reached from the API:
    the code is not present on the deployed server at all. (The Dockerfile does
    `COPY . .`, which would otherwise copy it. The ignore file is the only change
    outside `evals/` and the tests, and it does not affect application code.)
-5. **The harness refuses to run against anything but its own database.** It creates a
-   throwaway SQLite file in a temp directory, points the process at it before any
-   application module is imported, and asserts the engine URL is that file and
-   `ENVIRONMENT != "production"`. A developer shell with `DATABASE_URL` pointing at
-   real data cannot have the limit lifted against it.
+5. **The harness refuses to run against anything but local SQLite, and never in
+   production.** `assert_isolated()` runs on entry and raises unless the engine is
+   SQLite and `ENVIRONMENT != "production"`. The CLI additionally creates a throwaway
+   database in a temp directory, points the process at it before any application
+   module is imported, and passes that path so the harness asserts it is connected to
+   exactly that file. A shell with `DATABASE_URL` pointing at a real Postgres, or at
+   some other SQLite file, cannot have the limit lifted against it. Tests cover each
+   refusal.
 
 The harness uses one seeded user for the whole suite and a fresh dataset per run, so
 the override is genuinely needed and not decorative.
