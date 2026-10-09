@@ -21,7 +21,7 @@
  * (never as HTML, never through the Markdown renderer) so that a cell which
  * looks like markup stays a visible value rather than becoming one.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
@@ -144,6 +144,12 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
   // response it follows. Cleared whenever a new question is asked.
   const [decision, setDecision] = useState(null);
   const queryClient = useQueryClient();
+  // A proposal made before this page loaded, brought back from the server so a
+  // reload does not strand it. Held in state once restored (not read straight
+  // from the query) so the result of deciding it stays on screen when the query
+  // refetches.
+  const [restored, setRestored] = useState(null);
+  const restoredOnce = useRef(false);
 
   // The agent and the Copilot are gated by the same GROQ_API_KEY, and this
   // endpoint already derives its questions from the dataset's real columns, so
@@ -153,9 +159,29 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
     queryFn: () => copilotApi.suggestions(datasetId),
   });
 
+  // gcTime 0: a remounted tab must ask the server again rather than show a
+  // cached proposal that may have been decided since.
+  const pendingRun = useQuery({
+    queryKey: ["agent-pending", datasetId],
+    queryFn: () => toolAgentApi.pending(datasetId),
+    refetchOnWindowFocus: false,
+    gcTime: 0,
+  });
+
+  useEffect(() => {
+    if (pendingRun.data && !restoredOnce.current) {
+      restoredOnce.current = true;
+      setRestored(pendingRun.data);
+    }
+  }, [pendingRun.data]);
+
   const ask = useMutation({
     mutationFn: (text) => toolAgentApi.ask(datasetId, { question: text, allowActions }),
     onMutate: () => {
+      restoredOnce.current = true;
+      // A restored proposal stays if it is still waiting (a failed new question
+      // must not hide it), but one that was already decided is finished.
+      if (decision) setRestored(null);
       setDecision(null);
       decide.reset();
     },
@@ -165,6 +191,7 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
     mutationFn: ({ runId, approve }) => toolAgentApi.decide(datasetId, runId, approve),
     onSuccess: (result, { approve }) => {
       setDecision(result);
+      queryClient.setQueryData(["agent-pending", datasetId], null);
       if (!approve) return;
       // Approved actions change the dataset or add a model version, so every
       // cached view of it is now stale (same set Guided Analysis refreshes).
@@ -176,7 +203,8 @@ export default function ToolAgentPanel({ datasetId, dataset }) {
   });
 
   const configured = suggestions.data?.copilot_enabled;
-  const run = decision && decision.id === ask.data?.id ? decision : ask.data;
+  const base = ask.data ?? restored;
+  const run = decision && decision.id === base?.id ? decision : base;
   const error = ask.isError ? normalizeError(ask.error) : null;
   const decideError = decide.isError ? normalizeError(decide.error) : null;
 
