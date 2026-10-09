@@ -599,3 +599,198 @@ def test_a_run_that_is_not_awaiting_a_decision_cannot_be_decided(
     response = _decide(client, headers, dataset_id, run["id"], True)
 
     assert response.status_code == 409
+
+
+# ----------------------------------------- restoring a pending proposal on load
+
+
+def _pending(client, headers, dataset_id):
+    return client.get(f"/datasets/{dataset_id}/agent/runs/pending", headers=headers)
+
+
+def test_no_pending_run_is_null(client, auth_and_dataset):
+    headers, dataset_id = auth_and_dataset
+
+    response = _pending(client, headers, dataset_id)
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_pending_proposal_is_returned_after_a_fresh_page_load(
+    mock_post, client, auth_and_dataset
+):
+    """The reload case: the proposal was made in one page session; a brand new
+    request carrying nothing but the user's token gets it back, complete enough
+    to render the same confirmation card and to be decided."""
+    headers, dataset_id = auth_and_dataset
+    proposed = _propose(
+        client,
+        headers,
+        dataset_id,
+        mock_post,
+        "train_model",
+        {"target_column": "revenue"},
+    )
+
+    restored = _pending(client, headers, dataset_id).json()
+
+    assert restored["id"] == proposed["id"]
+    assert restored["status"] == "awaiting_confirmation"
+    assert restored["question"] == "Fix it"
+    assert restored["pending_action"] == {
+        "step_id": proposed["steps"][0]["id"],
+        "tool_name": "train_model",
+        "arguments": {"target_column": "revenue"},
+    }
+    assert restored["steps"][0]["status"] == "pending_confirmation"
+
+    # And the restored run is actionable, not just displayable.
+    decision = _decide(client, headers, dataset_id, restored["id"], False)
+    assert decision.status_code == 200
+    assert decision.json()["steps"][0]["status"] == "rejected_by_user"
+
+
+@patch("app.services.chat_service.requests.post")
+def test_the_restored_run_includes_the_trace_that_led_to_the_proposal(
+    mock_post, client, auth_and_dataset
+):
+    """The card's redaction hint reads the run's steps, so a restored run has to
+    carry them, not only the pending one."""
+    headers, dataset_id = auth_and_dataset
+    mock_post.return_value = _mock_response(
+        200,
+        {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "a",
+                                "type": "function",
+                                "function": {
+                                    "name": "get_dataset_overview",
+                                    "arguments": "{}",
+                                },
+                            },
+                            {
+                                "id": "b",
+                                "type": "function",
+                                "function": {
+                                    "name": "apply_cleaning",
+                                    "arguments": "{}",
+                                },
+                            },
+                        ],
+                    },
+                    "finish_reason": "tool_calls",
+                }
+            ],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        },
+    )
+    client.post(
+        f"/datasets/{dataset_id}/agent/ask",
+        headers=headers,
+        json={"question": "Fix it", "allow_actions": True},
+    )
+
+    restored = _pending(client, headers, dataset_id).json()
+
+    assert [s["tool_name"] for s in restored["steps"]] == [
+        "get_dataset_overview",
+        "apply_cleaning",
+    ]
+
+
+@pytest.mark.parametrize("approve", [True, False])
+@patch("app.services.chat_service.requests.post")
+def test_a_decided_proposal_is_no_longer_returned(
+    mock_post, approve, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+    assert _decide(client, headers, dataset_id, run["id"], approve).status_code == 200
+
+    assert _pending(client, headers, dataset_id).json() is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_an_expired_proposal_is_not_offered_and_the_lookup_changes_nothing(
+    mock_post, client, auth_and_dataset, monkeypatch
+):
+    headers, dataset_id = auth_and_dataset
+    run = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+    monkeypatch.setattr(settings, "AGENT_CONFIRM_TTL_MINUTES", 0)
+
+    assert _pending(client, headers, dataset_id).json() is None
+
+    # A GET must not have resolved the run: the decision path still sees it
+    # waiting, and is what reports it expired.
+    response = _decide(client, headers, dataset_id, run["id"], True)
+    assert response.status_code == 410
+
+
+@patch("app.services.chat_service.requests.post")
+def test_only_the_newest_pending_run_is_returned(mock_post, client, auth_and_dataset):
+    headers, dataset_id = auth_and_dataset
+    _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+    newer = _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    assert _pending(client, headers, dataset_id).json()["id"] == newer["id"]
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_run_that_never_needed_approval_is_not_returned(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    mock_post.return_value = _mock_response(200, _plain_answer_response("Done."))
+    client.post(
+        f"/datasets/{dataset_id}/agent/ask",
+        headers=headers,
+        json={"question": "Hello", "allow_actions": True},
+    )
+
+    assert _pending(client, headers, dataset_id).json() is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_pending_lookup_does_not_cross_users_or_datasets(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    _propose(client, headers, dataset_id, mock_post, "apply_cleaning", {})
+
+    client.post(
+        "/auth/register",
+        json={
+            "email": "peeker@example.com",
+            "password": "StrongPass1!",
+            "full_name": "Peeker",
+        },
+    )
+    tokens = client.post(
+        "/auth/login",
+        json={"email": "peeker@example.com", "password": "StrongPass1!"},
+    ).json()
+    other = {"Authorization": f"Bearer {tokens['access_token']}"}
+    other_dataset = client.post(
+        "/datasets/upload",
+        headers=other,
+        files={"file": ("mine.csv", io.BytesIO(SALES_CSV), "text/csv")},
+    ).json()["id"]
+
+    assert _pending(client, other, dataset_id).status_code == 404
+    assert _pending(client, other, other_dataset).json() is None
+
+
+def test_pending_lookup_requires_authentication(client, auth_and_dataset):
+    _headers, dataset_id = auth_and_dataset
+
+    response = client.get(f"/datasets/{dataset_id}/agent/runs/pending")
+
+    assert response.status_code == 401

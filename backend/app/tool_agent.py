@@ -42,6 +42,24 @@ def ask_agent(
     return run
 
 
+@router.get(
+    "/{dataset_id}/agent/runs/pending",
+    response_model=schemas.AgentAskResponse | None,
+)
+def get_pending_agent_run(
+    dataset: models.Dataset = Depends(get_owned_dataset),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """The run on this dataset waiting for approval, or null.
+
+    Deliberately not a history endpoint: at most one run, only while it can
+    still be decided. It lets a reloaded Agent tab restore the confirmation
+    card it would otherwise have lost.
+    """
+    return ToolAgentService(db).pending_run(dataset, current_user.id)
+
+
 @router.post(
     "/{dataset_id}/agent/runs/{run_id}/decision",
     response_model=schemas.AgentDecisionResponse,

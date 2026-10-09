@@ -202,6 +202,20 @@ def summarize_outcome(tool_name: str, outcome: ToolOutcome) -> str:
     return f"Ran `{tool_name}`."
 
 
+def _proposal_expired(step: models.AgentStep, now: datetime) -> bool:
+    """Whether a pending proposal has waited longer than the confirmation window.
+
+    One definition for both the decision endpoint (which refuses an expired
+    proposal) and the pending lookup (which does not offer one), so the page can
+    never restore a card that approving would then reject."""
+    proposed_at = step.created_at
+    if proposed_at is None:
+        return False
+    if proposed_at.tzinfo is None:
+        proposed_at = proposed_at.replace(tzinfo=timezone.utc)
+    return now - proposed_at >= timedelta(minutes=settings.AGENT_CONFIRM_TTL_MINUTES)
+
+
 def _as_json_or_text(text: str) -> Any:
     try:
         return json.loads(text)
@@ -458,6 +472,36 @@ class ToolAgentService:
         self.db.commit()
         return True
 
+    # ---------------------------------------------------------- pending
+    def pending_run(
+        self, dataset: models.Dataset, user_id: int
+    ) -> models.AgentRun | None:
+        """The newest run on this dataset still waiting for the user's decision.
+
+        Read-only. Exists so a reloaded page can show the proposal it lost. It
+        returns at most one run and only an unexpired one; expired proposals are
+        left as they are (a GET does not change state) and are marked expired
+        when someone tries to decide them.
+        """
+        candidates = (
+            self.db.query(models.AgentRun)
+            .filter(
+                models.AgentRun.dataset_id == dataset.id,
+                models.AgentRun.user_id == user_id,
+                models.AgentRun.status == "awaiting_confirmation",
+            )
+            .order_by(models.AgentRun.id.desc())
+            .all()
+        )
+        now = datetime.now(timezone.utc)
+        for run in candidates:
+            step = next(
+                (s for s in run.steps if s.status == "pending_confirmation"), None
+            )
+            if step is not None and not _proposal_expired(step, now):
+                return run
+        return None
+
     # --------------------------------------------------------- decision
     def decide(
         self,
@@ -513,11 +557,7 @@ class ToolAgentService:
         self.db.refresh(step)
 
         now = datetime.now(timezone.utc)
-        proposed_at = step.created_at
-        if proposed_at is not None and proposed_at.tzinfo is None:
-            proposed_at = proposed_at.replace(tzinfo=timezone.utc)
-        ttl = timedelta(minutes=settings.AGENT_CONFIRM_TTL_MINUTES)
-        if proposed_at is not None and now - proposed_at >= ttl:
+        if _proposal_expired(step, now):
             step.status = "expired"
             step.decided_at = now
             run.status = "completed"
