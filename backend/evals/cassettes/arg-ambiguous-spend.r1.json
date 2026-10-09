@@ -1,0 +1,125 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "ac67efb28b64004ccffe8cf5a2110cec7ca6d811155d715985c2474830642c5d",
+   "latency_s": 0.769,
+   "message": {
+    "reasoning": "We need average spend. Likely a column named \"spend\" or similar. First get dataset overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_05c90d41-c8ab-4e89-bc92-f808ca6ef719",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.050625523,
+    "completion_tokens": 47,
+    "completion_tokens_details": {
+     "reasoning_tokens": 23
+    },
+    "prompt_time": 0.069738155,
+    "prompt_tokens": 911,
+    "queue_time": 0.098052334,
+    "total_time": 0.120363678,
+    "total_tokens": 958
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "8e9a60d551451fa8db97f64c5eefa085b5b65d89236daf9f7ec89d86db363d74",
+   "latency_s": 0.74,
+   "message": {
+    "reasoning": "We need average spend. Which column is spend? We need to profile columns. Let's list columns. Use profile_column for each? We can run query to compute average of spend column. But we need column name. Let's profile all columns. Use profile_column for each column name. But we don't know names. We can get dataset overview but not column names. We need to get column names. Maybe run a query with measure? But we need column names. We can call get_dataset_overview again? It didn't give names. We might need to run a query to get distinct values? But we need column names. We can call run_query with measure? But we need column name. We can call profile_column for each column by guessing names? We don't know names. We can call get_correlations to see columns? That might list columns. Let's call get_correlations.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_correlations"
+      },
+      "id": "fc_d8349b30-db31-4c7e-be01-9b9341dce556",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.252729672,
+    "completion_tokens": 197,
+    "completion_tokens_details": {
+     "reasoning_tokens": 177
+    },
+    "prompt_time": 0.067829283,
+    "prompt_tokens": 1351,
+    "queue_time": 0.082264524,
+    "total_time": 0.320558955,
+    "total_tokens": 1548
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "9478a16d4780e9fb9c530c1ccfe48cff0eed4bf90b3e423c0cb97301521f01bd",
+   "latency_s": 0.556,
+   "message": {
+    "reasoning": "We need average spend. Likely column monthly_spend. Use run_query.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"aggregation\":\"avg\",\"chart_type\":\"kpi\",\"measure\":\"monthly_spend\"}",
+       "name": "run_query"
+      },
+      "id": "fc_ae915730-83f7-4b16-89f0-0cb9ba663ce5",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.072219344,
+    "completion_tokens": 52,
+    "completion_tokens_details": {
+     "reasoning_tokens": 17
+    },
+    "prompt_time": 0.095305527,
+    "prompt_tokens": 1677,
+    "queue_time": 0.136164015,
+    "total_time": 0.167524871,
+    "total_tokens": 1729
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "e7467e187dd443c38b6202bd55c80b9e1a811178c82ec4ea96ffb9e4e3d49075",
+   "latency_s": 0.812,
+   "message": {
+    "content": "The average monthly spend across the 40 customers in the dataset is **$74.27**.\n\n*This figure comes from the `run_query` tool, which calculated the average of the `monthly_spend` column.*",
+    "reasoning": "We have the average spend: 74.27. Need to mention tool results used. Provide plain English.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.098670338,
+    "completion_tokens": 77,
+    "completion_tokens_details": {
+     "reasoning_tokens": 23
+    },
+    "prompt_time": 0.089366022,
+    "prompt_tokens": 1789,
+    "queue_time": 0.095496117,
+    "total_time": 0.18803636,
+    "total_tokens": 1866
+   }
+  }
+ ],
+ "case_id": "arg-ambiguous-spend",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:34:34+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

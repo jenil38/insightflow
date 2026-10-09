@@ -1,0 +1,66 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "fd0477f0a2d6a021f7c89382194472f2ea903ee9d4b24e870c4a110ebd41904d",
+   "latency_s": 1.285,
+   "message": {
+    "reasoning": "We need dataset overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_1ebae0d8-d1bc-40bd-b6e2-780e2bd42c3f",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.249207439,
+    "completion_tokens": 30,
+    "completion_tokens_details": {
+     "reasoning_tokens": 6
+    },
+    "prompt_time": 0.058711512,
+    "prompt_tokens": 1040,
+    "prompt_tokens_details": {
+     "cached_tokens": 1024
+    },
+    "queue_time": 0.172789288,
+    "total_time": 0.307918951,
+    "total_tokens": 1070
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "a63be848db46c196a62ddcc878abb05ef1166a3e4592986dbbf7abeae79a9737",
+   "latency_s": 0.47,
+   "message": {
+    "content": "The dataset contains **30 rows**.  \n(Information obtained from the `get_dataset_overview` tool.)",
+    "reasoning": "We have dataset overview: rows 30. The question: \"How many rows are there?\" So answer: 30 rows. Provide tool result used.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.069695429,
+    "completion_tokens": 63,
+    "completion_tokens_details": {
+     "reasoning_tokens": 32
+    },
+    "prompt_time": 0.106105414,
+    "prompt_tokens": 1479,
+    "queue_time": 0.082026948,
+    "total_time": 0.175800843,
+    "total_tokens": 1542
+   }
+  }
+ ],
+ "case_id": "act-on-readonly-question",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:29:28+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

@@ -102,12 +102,44 @@ def resolve_fact(df: pd.DataFrame, fact: dict[str, Any]) -> Resolved:
 
 _NUMBER = re.compile(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?%?")
 
+_WORDS = {
+    **{
+        w: i
+        for i, w in enumerate(
+            "zero one two three four five six seven eight nine ten eleven twelve thirteen "
+            "fourteen fifteen sixteen seventeen eighteen nineteen".split()
+        )
+    },
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
+}
+_UNITS = "one|two|three|four|five|six|seven|eight|nine"
+_NUMBER_WORD = re.compile(
+    r"\b("
+    + "|".join(sorted(_WORDS, key=len, reverse=True))
+    + r")(?:[- ]("
+    + _UNITS
+    + r"))?\b",
+    re.IGNORECASE,
+)
+# "one" is also a pronoun ("one of the columns"); skip the obvious cases.
+_ONE_PRONOUN = re.compile(
+    r"^\s+(of|another|can|could|should|might|would|more|most|thing)\b", re.IGNORECASE
+)
+
 
 def extract_numbers(text: str) -> list[tuple[float, int, bool]]:
     """Numbers in free text as (value, decimals written, was_percent).
 
     Thousands separators are removed. A leading list marker ("1.", "2)") is not
-    a number the answer is claiming, so it is skipped.
+    a number the answer is claiming, so it is skipped. Numbers spelled out as words
+    ("four", "twenty-one") are read too.
     """
     found: list[tuple[float, int, bool]] = []
     for line in text.splitlines():
@@ -122,7 +154,24 @@ def extract_numbers(text: str) -> list[tuple[float, int, bool]]:
                 continue
             decimals = len(raw.split(".")[1]) if "." in raw else 0
             found.append((value, decimals, percent))
+        found.extend(_spelled_numbers(line))
     return found
+
+
+def _spelled_numbers(line: str) -> list[tuple[float, int, bool]]:
+    """Numbers written as words ("four", "twenty-one"). Heuristic: it can read a
+    pronoun "one" as a number, which only matters when the true value is 1."""
+    out: list[tuple[float, int, bool]] = []
+    for match in _NUMBER_WORD.finditer(line):
+        head = match.group(1).lower()
+        unit = match.group(2)
+        if unit and _WORDS[head] < 20:
+            continue  # "ten five" is not 15
+        if head == "one" and not unit and _ONE_PRONOUN.match(line[match.end() :]):
+            continue
+        value = _WORDS[head] + (_WORDS[unit.lower()] if unit else 0)
+        out.append((float(value), 0, False))
+    return out
 
 
 def number_matches(written: float, decimals: int, truth: float) -> bool:

@@ -144,7 +144,17 @@ class Harness:
         self._limits = eval_limits(api_key=settings.GROQ_API_KEY or "eval-harness")
         self._limits.__enter__()
         self.db = SessionLocal()
-        user = AuthService(self.db).register(EVAL_USER_EMAIL, "Eval-Harness-1!", "Eval")
+        # Reuse the harness's own user if a previous Harness in this database made
+        # one (the CLI opens one per process; tests open several).
+        user = (
+            self.db.query(models.User)
+            .filter(models.User.email == EVAL_USER_EMAIL)
+            .first()
+        )
+        if user is None:
+            user = AuthService(self.db).register(
+                EVAL_USER_EMAIL, "Eval-Harness-1!", "Eval"
+            )
         self.user_id = user.id
         return self
 

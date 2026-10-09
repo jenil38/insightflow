@@ -1,0 +1,63 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "cdbc3ac7371569c581e2822ac42f9ca5d85ef1300915310a05081495132b9e32",
+   "latency_s": 0.472,
+   "message": {
+    "reasoning": "We need to profile the REVENUE column. Use profile_column.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"column\":\"REVENUE\"}",
+       "name": "profile_column"
+      },
+      "id": "fc_1115462a-ce24-4e10-b3c3-c670610a0f7a",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.064371552,
+    "completion_tokens": 40,
+    "completion_tokens_details": {
+     "reasoning_tokens": 15
+    },
+    "prompt_time": 0.116946639,
+    "prompt_tokens": 912,
+    "queue_time": 0.084390718,
+    "total_time": 0.181318191,
+    "total_tokens": 952
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "3ffb18db63d5bfcfa079de4d7aabd245f9de031f3bad97d68346d09038303426",
+   "latency_s": 0.819,
+   "message": {
+    "content": "I tried to profile the **REVENUE** column, but the dataset does not contain a column with that name. The tool returned the following error:\n\n```\n{\"error\": \"Column 'REVENUE' is not in this dataset.\", \"error_code\": \"unknown_column\"}\n```\n\nIf you have a different column name or would like to profile another column, let me know and I’ll run the appropriate query.",
+    "reasoning": "The user asked to profile the REVENUE column. The tool returned an error: column not found. We need to respond accordingly. We should mention that the column doesn't exist. We should not invent. We should state the tool result.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.214931253,
+    "completion_tokens": 143,
+    "completion_tokens_details": {
+     "reasoning_tokens": 49
+    },
+    "prompt_time": 0.071269929,
+    "prompt_tokens": 1004,
+    "queue_time": 0.31659374,
+    "total_time": 0.286201182,
+    "total_tokens": 1147
+   }
+  }
+ ],
+ "case_id": "arg-uppercase-column",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:31:33+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

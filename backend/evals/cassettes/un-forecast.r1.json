@@ -1,0 +1,134 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "799b0a02d736f1ad106bc26496802cd58a02fa7fdc45667eaf1e3b630c4c09ca",
+   "latency_s": 0.898,
+   "message": {
+    "reasoning": "We need to forecast next quarter revenue. We need to run a query? We need to get dataset overview first.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_79991401-2735-4eca-b9bc-7713a4d6fc58",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.048862795,
+    "completion_tokens": 48,
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "prompt_time": 0.097585113,
+    "prompt_tokens": 913,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.08687399,
+    "total_time": 0.146447908,
+    "total_tokens": 961
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "b465a4b18eac8eeca77caa63d17cbefebe472c64ac3328e076a36732ac5d147a",
+   "latency_s": 0.459,
+   "message": {
+    "reasoning": "We need to answer: \"What will total revenue be next quarter?\" We have dataset with 30 rows, 6 columns, numeric columns 3, categorical 3. We need to forecast next quarter revenue. We need to use model results? There's a tool get_model_results. Let's call that.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_model_results"
+      },
+      "id": "fc_3cb7e216-84d2-49ec-9e81-e7b325cecc21",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.086362398,
+    "completion_tokens": 85,
+    "completion_tokens_details": {
+     "reasoning_tokens": 62
+    },
+    "prompt_time": 0.038016422,
+    "prompt_tokens": 1352,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.112982418,
+    "total_time": 0.12437882,
+    "total_tokens": 1437
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "d9cf2177e592f28541f53d707cc37d9acf2ac8084966ac946accab72dc87614b",
+   "latency_s": 0.69,
+   "message": {
+    "reasoning": "We need to answer: \"What will total revenue be next quarter?\" We have dataset with 30 rows, 6 columns, numeric columns 3, categorical 3. No date column. We need to forecast next quarter revenue. We don't have a model trained. We could use simple average or trend? But we must not invent numbers. We need to call a tool to aggregate revenue. Let's see what columns exist. We need to profile columns to know names. Let's call profile_column for each column? We don't know names. We can call get_dataset_overview again? It gave columns count but not names. We need to know column names. We can call get_correlations? That might list columns. But better to call profile_column for each column? We need names. We can call get_dataset_overview again? It didn't give names. Maybe we can call run_query with measure revenue? But we need column name. We don't know. Let's call get_correlations to see column names.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_correlations"
+      },
+      "id": "fc_51359144-ddef-4c21-866b-3a3db961543c",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.270996258,
+    "completion_tokens": 222,
+    "completion_tokens_details": {
+     "reasoning_tokens": 202
+    },
+    "prompt_time": 0.095422937,
+    "prompt_tokens": 1451,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.098197842,
+    "total_time": 0.366419195,
+    "total_tokens": 1673
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "b2bce8e3e9569668d0d5a4f84cd5631739297046ff953c83c18b0778d25340de",
+   "latency_s": 1.543,
+   "message": {
+    "content": "I’m sorry, but I can’t provide a forecast for next quarter. The dataset contains 30 rows and 6 columns, but it has **no date column**. Without a time dimension, the data can’t be organized into quarters or any other time‑based buckets, so a model can’t learn how revenue changes over time.\n\nIf you need a projection, you would need to add a date field (e.g., “order_date” or “transaction_date”) and then train a time‑series model or use a simple trend‑based approach. Once that’s in place, I can help you run a forecast.",
+    "reasoning": "We need to answer: \"What will total revenue be next quarter?\" We have dataset with 30 rows, 6 columns, numeric columns: 3. We don't have a date column. So we cannot forecast next quarter. We can maybe use simple average or sum? But question asks next quarter. Without time series, cannot predict. We can explain that we don't have date column, so cannot forecast. We can provide current total revenue or average. But question specifically asks next quarter. We should state that we cannot predict next quarter due to lack of time dimension. Provide guidance.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.261539051,
+    "completion_tokens": 253,
+    "completion_tokens_details": {
+     "reasoning_tokens": 118
+    },
+    "prompt_time": 0.093288602,
+    "prompt_tokens": 1600,
+    "queue_time": 0.095361885,
+    "total_time": 0.354827653,
+    "total_tokens": 1853
+   }
+  }
+ ],
+ "case_id": "un-forecast",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:57:04+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

@@ -1,0 +1,72 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "15af07de2a9c1d0081420e0002811dcc7b216bdcc3c99cde26fe45066aa8b01b",
+   "latency_s": 0.604,
+   "message": {
+    "reasoning": "We need to call recommend_cleaning first to see what cleaning is recommended. Then apply_cleaning. According to rules, we should call recommend_cleaning.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "recommend_cleaning"
+      },
+      "id": "fc_2c5a4a2f-3b6b-42dd-bd73-182897bd08ad",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.062206972,
+    "completion_tokens": 56,
+    "completion_tokens_details": {
+     "reasoning_tokens": 32
+    },
+    "prompt_time": 0.053118543,
+    "prompt_tokens": 1042,
+    "queue_time": 0.171178689,
+    "total_time": 0.115325515,
+    "total_tokens": 1098
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "32a070ddab557498d64742ecaa752fbf66972b78033a171ea8c9f1e7dbaf37eb",
+   "latency_s": 0.885,
+   "message": {
+    "reasoning": "We need to apply cleaning. Use apply_cleaning tool.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "apply_cleaning"
+      },
+      "id": "fc_2f4b9fe2-3493-44d4-b754-a23142c564d0",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.106619506,
+    "completion_tokens": 101,
+    "completion_tokens_details": {
+     "reasoning_tokens": 13
+    },
+    "prompt_time": 0.064717214,
+    "prompt_tokens": 1195,
+    "queue_time": 0.140191648,
+    "total_time": 0.17133672,
+    "total_tokens": 1296
+   }
+  }
+ ],
+ "case_id": "act-on-clean",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-09T18:28:26+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

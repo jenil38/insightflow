@@ -106,3 +106,14 @@ class RunScore:
         out = asdict(self)
         out["checks"] = [c.to_dict() for c in self.checks]
         return out
+
+
+def run_record_from_dict(data: dict[str, Any]) -> RunRecord:
+    """Inverse of `RunRecord.to_dict`, so a stored result can be scored again."""
+    return RunRecord(
+        **{
+            **data,
+            "steps": [StepRecord(**s) for s in data["steps"]],
+            "calls": [CallRecord(**c) for c in data["calls"]],
+        }
+    )

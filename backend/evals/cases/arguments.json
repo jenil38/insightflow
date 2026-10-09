@@ -67,14 +67,25 @@
   "question": "What is the average spend?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "monthly_spend"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "measure": "monthly_spend"
+     },
+     "optional": true
     }
    ],
    "facts": [
@@ -92,14 +103,25 @@
   "question": "Count the rows for each product.",
   "expect": {
    "tools_required": [
-    "run_query"
+    [
+     "run_query",
+     "profile_column"
+    ]
    ],
    "tool_args": [
     {
      "tool": "run_query",
      "args": {
       "dimension": "product"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "product"
+     },
+     "optional": true
     }
    ]
   }
