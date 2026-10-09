@@ -1,0 +1,320 @@
+[
+ {
+  "id": "ro-rows-cols-sales30",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "How many rows and columns does this dataset have?",
+  "expect": {
+   "tools_required": [
+    [
+     "get_dataset_overview",
+     "assess_quality",
+     "profile_column"
+    ]
+   ],
+   "facts": [
+    {
+     "kind": "row_count"
+    },
+    {
+     "kind": "column_count"
+    }
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "ro-missing-units",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "How many values are missing in the units column?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "units"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "missing_count",
+     "column": "units"
+    }
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "ro-mean-revenue",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "What is the average revenue per row?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "revenue"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "mean",
+     "column": "revenue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-max-units",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "What is the largest number of units in a single row?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "units"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "max",
+     "column": "units"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-unique-region",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "How many different regions are there?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "region"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "unique_count",
+     "column": "region"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-top-product",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "Which product appears most often?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "product"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "top_category",
+     "column": "product"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-corr-units-revenue",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "How strongly are units and revenue correlated?",
+  "expect": {
+   "tools_required": [
+    "get_correlations"
+   ],
+   "facts": [
+    {
+     "kind": "correlation",
+     "x": "units",
+     "y": "revenue"
+    }
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "ro-quality",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "How good is the data quality overall?",
+  "expect": {
+   "tools_required": [
+    [
+     "assess_quality",
+     "get_dataset_overview"
+    ]
+   ]
+  }
+ },
+ {
+  "id": "ro-customers-mean-tenure",
+  "category": "read_only",
+  "dataset": "customers_40",
+  "question": "What is the average tenure in months?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "tenure_months"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "mean",
+     "column": "tenure_months"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-customers-churn-rate",
+  "category": "read_only",
+  "dataset": "customers_40",
+  "question": "What fraction of customers churned?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "churned"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "mean",
+     "column": "churned"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-customers-top-city",
+  "category": "read_only",
+  "dataset": "customers_40",
+  "question": "Which city has the most customers?",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "city"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "top_category",
+     "column": "city"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-customers-spend-by-plan",
+  "category": "read_only",
+  "dataset": "customers_40",
+  "question": "Which plan brings in the most total monthly spend?",
+  "expect": {
+   "tools_required": [
+    "run_query"
+   ],
+   "tool_args": [
+    {
+     "tool": "run_query",
+     "args": {
+      "dimension": "plan",
+      "measure": "monthly_spend"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "group_top",
+     "measure": "monthly_spend",
+     "dimension": "plan"
+    }
+   ]
+  }
+ },
+ {
+  "id": "ro-sales-revenue-by-region",
+  "category": "read_only",
+  "dataset": "sales_30",
+  "question": "Which region has the highest total revenue?",
+  "expect": {
+   "tools_required": [
+    "run_query"
+   ],
+   "tool_args": [
+    {
+     "tool": "run_query",
+     "args": {
+      "dimension": "region",
+      "measure": "revenue"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "group_top",
+     "measure": "revenue",
+     "dimension": "region"
+    }
+   ]
+  }
+ }
+]

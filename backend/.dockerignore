@@ -1,0 +1,2 @@
+# The eval harness is a development tool and is never part of the deployed image.
+evals/

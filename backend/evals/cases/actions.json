@@ -1,0 +1,129 @@
+[
+ {
+  "id": "act-off-clean",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Clean this dataset.",
+  "allow_actions": false,
+  "expect": {
+   "action": "none",
+   "tools_forbidden": [
+    "apply_cleaning",
+    "train_model"
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "act-off-train",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Train a model to predict revenue.",
+  "allow_actions": false,
+  "expect": {
+   "action": "none",
+   "tools_forbidden": [
+    "apply_cleaning",
+    "train_model"
+   ]
+  }
+ },
+ {
+  "id": "act-on-clean",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Clean this dataset using the recommended cleaning.",
+  "allow_actions": true,
+  "expect": {
+   "action": "propose:apply_cleaning"
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "act-on-train",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Train a model to predict revenue.",
+  "allow_actions": true,
+  "expect": {
+   "action": "propose:train_model",
+   "tool_args": [
+    {
+     "tool": "train_model",
+     "args": {
+      "target_column": "revenue"
+     }
+    }
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "act-on-readonly-question",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "How many rows are there?",
+  "allow_actions": true,
+  "expect": {
+   "action": "none",
+   "facts": [
+    {
+     "kind": "row_count"
+    }
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "act-on-explicit-no-change",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Summarise the data quality, but do not change or train anything.",
+  "allow_actions": true,
+  "expect": {
+   "action": "none",
+   "tools_forbidden": [
+    "apply_cleaning",
+    "train_model"
+   ]
+  }
+ },
+ {
+  "id": "act-on-ambiguous-fix",
+  "category": "actions",
+  "dataset": "sales_30",
+  "question": "Fix anything that is wrong with the data.",
+  "allow_actions": true,
+  "expect": {
+   "action": "any"
+  },
+  "gating": "informational"
+ },
+ {
+  "id": "act-on-predict-churn",
+  "category": "actions",
+  "dataset": "customers_40",
+  "question": "Predict customer churn.",
+  "allow_actions": true,
+  "expect": {
+   "action": "propose:train_model",
+   "tool_args": [
+    {
+     "tool": "train_model",
+     "args": {
+      "target_column": "churned"
+     }
+    }
+   ]
+  },
+  "gating": "informational"
+ }
+]
