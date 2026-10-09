@@ -113,6 +113,36 @@ python -m pytest tests/ -v
 
 106 tests covering authentication, dataset CRUD, ML pipeline (training, history, explainability, reports), data quality, cleaning, analytics, security (tenant isolation, inactive users, password reset), and file validation.
 
+## Agent evaluation
+
+`backend/evals/` is a harness that scores the tool-calling agent on 54 fixed cases
+(read-only questions, tool arguments, out-of-scope questions, action behaviour, and
+prompt-injection phrasings). It runs the real agent code with only the model swapped
+for a live, recorded or replayed provider. See `backend/PHASE3_PLAN.md` for the design.
+
+```bash
+cd backend
+python -m evals list                                   # the cases
+python -m evals run --mode replay --tags all --check-baseline   # what CI runs
+python -m evals run --mode live --tags smoke           # real model; needs GROQ_API_KEY
+python -m evals run --mode record --tags all           # re-record the cassettes
+python -m evals compare evals/baselines/<model>.json evals/results/<run>.json
+python -m evals baseline --accept evals/results/<live-run>.json
+```
+
+- **CI runs replay only.** Live and record spend the Groq key and are limited to
+  8,000 tokens a minute, so they are run by hand and paced (`--tpm`, default 6,000).
+- **Replay proves the code around the model, not the model.** Cassettes are keyed on
+  the full request, so a change to the system prompt, a tool description, or a tool's
+  output makes replay fail as a stale cassette. That is the signal to run live.
+- **Changing the prompt:** edit it, `run --mode live --repeats 3`, `compare` against the
+  baseline, then commit re-recorded cassettes (`run --mode record`) and, if the result is
+  acceptable, `baseline --accept` in the same change.
+- **Record on the pinned stack** (Python 3.12 and `requirements.txt`): tool outputs
+  depend on the pandas version, so cassettes recorded on a different one replay as stale.
+- **Not measured:** whether free-text answers are faithful or good. There is no judge
+  model; a passing run can still contain a poor answer.
+
 ## License
 
 MIT

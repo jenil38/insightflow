@@ -47,6 +47,14 @@ def _parser() -> argparse.ArgumentParser:
         help="replay by position, ignoring request keys (local only; says nothing about the current prompt)",
     )
     run.add_argument("--out", default=str(DEFAULT_OUT))
+    run.add_argument("--check-baseline", action="store_true")
+    cmp_ = sub.add_parser(
+        "compare", help="diff two result files (or a result against a baseline)"
+    )
+    cmp_.add_argument("before")
+    cmp_.add_argument("after")
+    base = sub.add_parser("baseline", help="promote a result to the committed baseline")
+    base.add_argument("--accept", required=True, metavar="RESULT_JSON")
     resc = sub.add_parser(
         "rescore",
         help="re-apply the current cases and scorers to a stored result, without calling a model",
@@ -57,8 +65,32 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _regression_command(args: argparse.Namespace) -> int:
+    """These work on JSON files only and never import the application."""
+    from . import compare as cmp
+
+    if args.command == "baseline":
+        result = cmp.load(Path(args.accept))
+        if result["identity"]["mode"] == "replay":
+            print(
+                "refusing to accept a replay as a baseline: replay does not measure the model",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"baseline written: {cmp.accept(result)}")
+        return 0
+    before, after = cmp.load(Path(args.before)), cmp.load(Path(args.after))
+    a = before["summary"]
+    b = after["summary"]
+    diff = cmp.compare(a, b)
+    print(cmp.render_compare(diff, Path(args.before).stem, Path(args.after).stem))
+    return 1 if diff["regressed"] else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command in ("compare", "baseline"):
+        return _regression_command(args)
     cases = load_cases()
     if args.command == "list":
         for c in cases:
@@ -167,6 +199,10 @@ def main(argv: list[str] | None = None) -> int:
             f"{len(provider.failed_runs)} run(s) not recorded (provider errors); re-run with --resume",
             file=sys.stderr,
         )
+    if args.check_baseline:
+        from .compare import check_against_baseline
+
+        exit_code = max(exit_code, check_against_baseline(result))
     return exit_code
 
 
