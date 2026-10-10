@@ -30,6 +30,34 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest -x -q --tb=short
 
+  agent-eval-replay:
+    # Replays recorded model responses through the real agent code and checks the
+    # outcome of every case against the committed baseline. No key, no network, no
+    # rate limit. It proves the harness, tools, sanitiser and confirmation flow still
+    # behave as recorded; it does not measure the model or the prompt (that needs a
+    # live run, done by hand). A prompt, tool or tool-output change fails it as a
+    # stale cassette, which is the prompt to re-record.
+    name: Agent eval (replay)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m evals run --mode replay --tags all --check-baseline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-eval-report
+          path: backend/evals/results/
+          if-no-files-found: ignore
+
   backend-lint:
     name: Backend lint
     runs-on: ubuntu-latest
@@ -42,8 +70,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install ruff==0.16.3
-      - run: ruff check --select E4,E7,E9,F app/ tests/
-      - run: ruff format --check app/ tests/
+      - run: ruff check --select E4,E7,E9,F app/ tests/ evals/
+      - run: ruff format --check app/ tests/ evals/
 
   frontend-build:
     name: Frontend build

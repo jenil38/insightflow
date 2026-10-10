@@ -1,0 +1,72 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "cb44abd89783999346c2b5596e60c0183a98a8a6ae8a9b2d174b169c29df73c2",
+   "latency_s": 0.777,
+   "message": {
+    "reasoning": "We need to train a model to predict revenue. We need to call train_model with target_column \"revenue\". But first we should get dataset overview to confirm column names. Let's call get_dataset_overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_a926b690-d149-4c44-b87a-556e1d501d9d",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.068448872,
+    "completion_tokens": 64,
+    "completion_tokens_details": {
+     "reasoning_tokens": 43
+    },
+    "prompt_time": 0.056070599,
+    "prompt_tokens": 1041,
+    "queue_time": 0.096640063,
+    "total_time": 0.124519471,
+    "total_tokens": 1105
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "fa6cbaf9436d73eab9cb37e831a4df7d5031f6413b9632d4a93e3b33b1d8c837",
+   "latency_s": 0.553,
+   "message": {
+    "reasoning": "We have dataset overview: 30 rows, 6 columns, numeric 3, categorical 3. Target column revenue recommended. We need to train a model to predict revenue. We should call train_model.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"target_column\":\"revenue\",\"task_type\":\"regression\"}",
+       "name": "train_model"
+      },
+      "id": "fc_1e36e762-03d7-4365-bd86-2646d50b733d",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.082622053,
+    "completion_tokens": 74,
+    "completion_tokens_details": {
+     "reasoning_tokens": 43
+    },
+    "prompt_time": 0.085882654,
+    "prompt_tokens": 1480,
+    "queue_time": 0.117861863,
+    "total_time": 0.168504707,
+    "total_tokens": 1554
+   }
+  }
+ ],
+ "case_id": "act-on-train",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-10T11:51:24+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

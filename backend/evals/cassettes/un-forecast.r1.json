@@ -1,0 +1,103 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "799b0a02d736f1ad106bc26496802cd58a02fa7fdc45667eaf1e3b630c4c09ca",
+   "latency_s": 0.414,
+   "message": {
+    "reasoning": "We need to forecast next quarter revenue. We need to run a query? We need to get dataset overview to see columns. Let's call get_dataset_overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_f8e770cd-27e1-450d-9187-2f288ce97593",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.055252473,
+    "completion_tokens": 54,
+    "completion_tokens_details": {
+     "reasoning_tokens": 33
+    },
+    "prompt_time": 0.009530579,
+    "prompt_tokens": 913,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.117699317,
+    "total_time": 0.064783052,
+    "total_tokens": 967
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "0a8d8c446f44b0609e5e60c58b77930e28f8ad25b60a74cecbe6852d1658196c",
+   "latency_s": 0.758,
+   "message": {
+    "reasoning": "We need to answer: \"What will total revenue be next quarter?\" We need to forecast next quarter revenue. We have dataset with 30 rows, 6 columns, numeric columns 3. We need to know revenue column. We need to forecast next quarter. We might need to use a model. There's a tool get_model_results. Let's call that.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_model_results"
+      },
+      "id": "fc_86d61843-4ff2-4960-b640-f3af17322881",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.103344417,
+    "completion_tokens": 96,
+    "completion_tokens_details": {
+     "reasoning_tokens": 73
+    },
+    "prompt_time": 0.038320322,
+    "prompt_tokens": 1352,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.07272723,
+    "total_time": 0.141664739,
+    "total_tokens": 1448
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "f463af6b957f02342e0b9b65aeccd9faebe22764d3c8579ca88e122c5d600591",
+   "latency_s": 0.683,
+   "message": {
+    "content": "I’m sorry, but I can’t give a reliable estimate of next‑quarter revenue from this data set.  \n\n**Why?**  \n- The data set has no date or time column, so there is no chronological ordering to build a time‑series forecast.  \n- No predictive model has been trained yet (the `get_model_results` call shows “trained: false”).  \n\nTo estimate future revenue you would need to:\n\n1. **Add a time dimension** (e.g., a “quarter” or “month” column).  \n2. **Train a forecasting model** (regression, ARIMA, Prophet, etc.) on the historical revenue data.  \n3. **Validate the model** and then use it to predict the next quarter’s revenue.\n\nOnce those steps are in place, I can help run a query or run a model to give you a forecast.",
+    "reasoning": "We need to answer: \"What will total revenue be next quarter?\" We have dataset with 30 rows, 6 columns, numeric columns 3. No date column. So we can't forecast next quarter. We need to explain that we cannot predict without time series or model. We can suggest building a model. Use get_correlations maybe? But question is about future revenue. We can say we need a model. Provide guidance. Use get_correlations? Not necessary. Provide answer: cannot predict. Use get_dataset_overview to mention dataset size. Use get_model_results to mention no model. So answer: cannot forecast.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.327004065,
+    "completion_tokens": 313,
+    "completion_tokens_details": {
+     "reasoning_tokens": 127
+    },
+    "prompt_time": 0.044642323,
+    "prompt_tokens": 1451,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.081911043,
+    "total_time": 0.371646388,
+    "total_tokens": 1764
+   }
+  }
+ ],
+ "case_id": "un-forecast",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-10T12:14:50+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

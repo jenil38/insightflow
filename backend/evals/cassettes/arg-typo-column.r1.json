@@ -1,0 +1,66 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "b83c3c4c66eca380f7d20ab8b484bf71f5a33d9630e71344c98078843da82d14",
+   "latency_s": 0.802,
+   "message": {
+    "reasoning": "We need to profile the column \"unitz\". Use profile_column.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"column\":\"unitz\"}",
+       "name": "profile_column"
+      },
+      "id": "fc_1a89b620-d973-4082-940e-26bd5adc79bb",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.051229446,
+    "completion_tokens": 39,
+    "completion_tokens_details": {
+     "reasoning_tokens": 15
+    },
+    "prompt_time": 0.053692704,
+    "prompt_tokens": 913,
+    "queue_time": 0.146676607,
+    "total_time": 0.10492215,
+    "total_tokens": 952
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "e320d09f97109884387770ae2674b6b48df39f4aefdc5c2d7f575ad2f1b84060",
+   "latency_s": 0.945,
+   "message": {
+    "content": "I’m sorry, but the dataset does not contain a column named **unitz**. The tool returned an error indicating that the column is unknown. You might want to double‑check the column names in the dataset or let me know the correct name, and I can provide a profile for that column.",
+    "reasoning": "The user asked: \"Tell me about the unitz column.\" The tool returned error: column not found. We must respond accordingly. According to rules, we should not invent. We should state that column not found. Also we can suggest checking column names. Provide plain English.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.131838966,
+    "completion_tokens": 127,
+    "completion_tokens_details": {
+     "reasoning_tokens": 57
+    },
+    "prompt_time": 0.01710826,
+    "prompt_tokens": 1003,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.17160937,
+    "total_time": 0.148947226,
+    "total_tokens": 1130
+   }
+  }
+ ],
+ "case_id": "arg-typo-column",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-10T11:55:27+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}
