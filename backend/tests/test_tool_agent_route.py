@@ -794,3 +794,38 @@ def test_pending_lookup_requires_authentication(client, auth_and_dataset):
     response = client.get(f"/datasets/{dataset_id}/agent/runs/pending")
 
     assert response.status_code == 401
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_cut_off_answer_reaches_the_client_as_a_truncated_run(
+    mock_post, client, auth_and_dataset
+):
+    headers, dataset_id = auth_and_dataset
+    mock_post.return_value = _mock_response(
+        200,
+        {
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": "", "tool_calls": None},
+                    "finish_reason": "length",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 900,
+                "completion_tokens": 1024,
+                "total_tokens": 1924,
+            },
+        },
+    )
+
+    response = client.post(
+        f"/datasets/{dataset_id}/agent/ask",
+        headers=headers,
+        json={"question": "Tell me everything"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "truncated"
+    assert "cut off" in body["answer"]
+    assert body["pending_action"] is None

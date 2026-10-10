@@ -120,10 +120,11 @@ const FALLBACK_STATUS = {
   Icon: Wrench, label: "Unknown", tone: "neutral", ring: "border-line bg-canvas", text: "text-subtle",
 };
 
-/** Run outcomes. `step_limit` is a real outcome, not an error. */
+/** Run outcomes. `step_limit` and `truncated` are real outcomes, not errors. */
 const RUN_OUTCOME = {
   completed: { tone: "success", label: "Completed" },
   step_limit: { tone: "warning", label: "Stopped at the step limit" },
+  truncated: { tone: "warning", label: "Answer cut off" },
   error: { tone: "danger", label: "Failed" },
   awaiting_confirmation: { tone: "warning", label: "Waiting for your approval" },
   running: { tone: "neutral", label: "Running" },
@@ -418,6 +419,14 @@ function RunResult({ run, dataset, onDecide, deciding, decideError }) {
 
   return (
     <div className="space-y-4">
+      {run.status === "truncated" && (
+        <Alert tone="warning" title="The answer was cut off">
+          The model ran out of its response limit before it finished writing an answer, so
+          there is nothing reliable to show. Nothing was changed. Try the question again, or
+          ask something narrower.
+        </Alert>
+      )}
+
       {run.status === "step_limit" && (
         <Alert tone="warning" title="The agent hit its step limit">
           It ran out of allowed tool calls before reaching an answer. Everything it did get to is

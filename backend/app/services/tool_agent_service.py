@@ -128,6 +128,23 @@ def _parse_arguments(raw: str | None) -> Any:
         return raw
 
 
+TRUNCATED_NOTICE = (
+    "The answer was cut off: the model used up its response limit before it "
+    "finished writing one. Nothing was changed. Try the question again, or ask "
+    "something narrower."
+)
+
+
+def _truncated_answer(partial: str) -> str:
+    """What a user is shown when the model's final response hit its limit.
+
+    A partial answer is kept, because it may be useful, but it is marked as cut off
+    rather than presented as if it were whole."""
+    if not partial:
+        return TRUNCATED_NOTICE
+    return f"{partial}\n\n[{TRUNCATED_NOTICE}]"
+
+
 def _arguments_for_storage(parsed: Any) -> Any:
     """`agent_steps.arguments` is a JSON column; anything that is not already
     JSON-shaped (a malformed-JSON string) is wrapped rather than stored raw."""
@@ -328,7 +345,16 @@ class ToolAgentService:
             tool_calls = message.get("tool_calls")
 
             if not tool_calls:
-                run.answer = (message.get("content") or "").strip()
+                content = (message.get("content") or "").strip()
+                if result.finish_reason == "length":
+                    # The model hit its response limit instead of finishing. With a
+                    # reasoning model that is often before it has written a word, and
+                    # recording that as "completed" with a blank answer looks to the
+                    # user like a silent failure. Say what happened instead.
+                    run.status = "truncated"
+                    run.answer = _truncated_answer(content)
+                    return
+                run.answer = content
                 run.status = "completed"
                 return
 
