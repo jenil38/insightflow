@@ -22,6 +22,9 @@ def isolate() -> Path:
     os.environ["JWT_SECRET"] = secrets.token_hex(32)
     os.environ["ENVIRONMENT"] = "development"
     os.environ["DEBUG"] = "false"
+    # Registering the harness user would send a verification email if SMTP were
+    # configured in the developer's environment or .env file; blank it so it logs.
+    os.environ["SMTP_HOST"] = ""
     return db_path
 
 
