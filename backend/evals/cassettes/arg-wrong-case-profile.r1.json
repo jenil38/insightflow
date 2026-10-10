@@ -1,0 +1,103 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "e5729b665fd256f8eae71140ac364bd8ebeec4f9b95da8e2d390b774bc925340",
+   "latency_s": 0.485,
+   "message": {
+    "reasoning": "We need to call profile_column for Tenure_Months.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"column\":\"Tenure_Months\"}",
+       "name": "profile_column"
+      },
+      "id": "fc_bf7cad88-7493-4803-9b4d-c93f802fc7ec",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.042006848,
+    "completion_tokens": 41,
+    "completion_tokens_details": {
+     "reasoning_tokens": 14
+    },
+    "prompt_time": 0.190941671,
+    "prompt_tokens": 986,
+    "prompt_tokens_details": {
+     "cached_tokens": 256
+    },
+    "queue_time": 0.030783119,
+    "total_time": 0.232948519,
+    "total_tokens": 1027
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "569623c82288925817f8c944e34f9b5600e718dcce9df396e06f1299edba1ebd",
+   "latency_s": 0.734,
+   "message": {
+    "reasoning": "The column name is likely \"tenure_months\" not \"Tenure_Months\". We need to profile that.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"column\":\"tenure_months\"}",
+       "name": "profile_column"
+      },
+      "id": "fc_af7094b5-69b7-454a-a175-94ea7466d149",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.0516982,
+    "completion_tokens": 51,
+    "completion_tokens_details": {
+     "reasoning_tokens": 26
+    },
+    "prompt_time": 0.023772015,
+    "prompt_tokens": 1122,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.083644586,
+    "total_time": 0.075470215,
+    "total_tokens": 1173
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "aeaa7d9cf49527ddcee427636e9517ad1dd301c1f469cce86bd87543cdfc37c8",
+   "latency_s": 1.655,
+   "message": {
+    "content": "**Tenure_Months – Quick Profile**\n\n| Metric | Value |\n|--------|-------|\n| **Data type** | Integer (numeric) |\n| **Rows** | 40 (all non‑null) |\n| **Missing values** | 0 % |\n| **Unique values** | 27 (67.5 % of rows) |\n| **Range** | 1 – 60 months |\n| **Mean** | 27.5 months |\n| **Median** | 25.5 months |\n| **Standard deviation** | 19.1 months |\n| **Quartiles** | Q1 = 8 months, Q3 = 42 months |\n| **Top 10 most common values** | 42 (3), 13 (2), 56 (2), 7 (2), 41 (2), 4 (2), 1 (2), 25 (2), 60 (2), 8 (2) |\n| **Histogram bins** | 1–5.92 (6), 5.92–10.83 (6), 10.83–15.75 (2), 15.75–20.67 (1), 20.67–25.58 (5), 25.58–30.50 (2), 30.50–35.42 (3), 35.42–40.33 (2), 40.33–45.25 (5), 45.25–50.17 (1), 50.17–55.08 (2), 55.08–60.00 (5) |\n\n**Key takeaways**\n\n- All 40 records contain a tenure value; there are no missing entries.\n- Tenure spans from 1 to 60 months, with a fairly wide spread (standard deviation ≈ 19 months).\n- The distribution is moderately skewed toward shorter tenures, but a few customers have very long tenures (up to 60 months).\n- The most frequent tenure is 42 months, followed by 13 and 56 months, each appearing twice.\n\nThis profile gives a clear snapshot of how long customers have been with the service, which can inform churn analysis, retention strategies, or segmentation efforts.",
+    "reasoning": "We have the profile. Need to answer: \"Profile the Tenure_Months column.\" Provide summary. Use tool results.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.750614724,
+    "completion_tokens": 516,
+    "completion_tokens_details": {
+     "reasoning_tokens": 27
+    },
+    "prompt_time": 0.185767409,
+    "prompt_tokens": 1790,
+    "prompt_tokens_details": {
+     "cached_tokens": 256
+    },
+    "queue_time": 0.048640572,
+    "total_time": 0.936382133,
+    "total_tokens": 2306
+   }
+  }
+ ],
+ "case_id": "arg-wrong-case-profile",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-10T14:03:22+00:00",
+ "repeat": 1,
+ "tools_hash": "478141d0dfdcea89"
+}
