@@ -54,10 +54,12 @@ def answer(text):
 class Scripted:
     """A Provider that returns a fixed script, one response per call."""
 
-    def __init__(self, *responses, latency=0.25, error=None):
+    def __init__(self, *responses, latency=0.25, error=None, error_after=None):
         self.responses = list(responses)
         self.latency = latency
         self.error = error
+        # Raise `error` only once this many responses have been served.
+        self.error_after = error_after
         self.sent = []
 
     def begin_run(self, case_id, repeat):
@@ -68,7 +70,9 @@ class Scripted:
 
     def call(self, messages, tools):
         self.sent.append((messages, tools))
-        if self.error:
+        if self.error and (
+            self.error_after is None or len(self.sent) > self.error_after
+        ):
             raise self.error
         return self.responses.pop(0), self.latency
 
@@ -261,9 +265,93 @@ def test_the_harness_refuses_a_database_that_is_not_its_own(monkeypatch):
 def test_nothing_in_the_application_imports_the_eval_package():
     import pathlib
 
-    offenders = [
-        str(p)
-        for p in pathlib.Path("app").rglob("*.py")
-        if "evals" in p.read_text(encoding="utf-8")
-    ]
+    # Anchored on this file, not the working directory, so it scans the real app
+    # package wherever pytest is started from.
+    app_dir = pathlib.Path(__file__).resolve().parent.parent / "app"
+    scanned = list(app_dir.rglob("*.py"))
+    assert len(scanned) > 20, (
+        f"expected to scan the app package, found {len(scanned)} files"
+    )
+    offenders = [str(p) for p in scanned if "evals" in p.read_text(encoding="utf-8")]
     assert offenders == []
+
+
+# ------------------------------------- review fixes: invariants must see what really ran
+
+
+def test_an_action_that_executes_is_reported_when_the_confirmation_gate_is_gone(
+    monkeypatch,
+):
+    """If `_propose_action` stopped intercepting action tools, `ask` would execute
+    apply_cleaning. The harness has to say so, not just pass."""
+    monkeypatch.setattr(
+        tool_agent_service.ToolAgentService, "_propose_action", lambda *a, **k: False
+    )
+    case = CASES["act-on-clean"]
+    provider = Scripted(tool_call("apply_cleaning"), answer("Cleaned."))
+    with Harness(provider) as h:
+        record = h.run_case(case)
+
+    assert record.steps[0].tool == "apply_cleaning" and record.steps[0].status == "ok"
+    score = score_run(case, record)
+    assert [c.name for c in score.invariant_violations] == [
+        "invariant:no_action_executed_in_ask"
+    ]
+    from evals.report import summarize
+
+    summary = summarize([{"record": record.to_dict(), "score": score.to_dict()}])
+    assert summary["invariant_violations"][0]["case"] == case.id
+
+
+def test_the_violation_is_reported_even_if_the_provider_fails_afterwards(monkeypatch):
+    monkeypatch.setattr(
+        tool_agent_service.ToolAgentService, "_propose_action", lambda *a, **k: False
+    )
+    error = ValidationAppError(
+        "slow down", error_code="copilot_rate_limited", status_code=429
+    )
+    case = CASES["act-on-clean"]
+    provider = Scripted(tool_call("apply_cleaning"), error=error, error_after=1)
+    with Harness(provider) as h:
+        record = h.run_case(case)
+
+    assert record.error["kind"] == "infra"
+    score = score_run(case, record)
+    assert score.outcome == "not_scored"  # the run is still not a model result...
+    assert score.invariant_violations  # ...but the violation is not hidden by that
+    from evals.report import summarize
+
+    summary = summarize([{"record": record.to_dict(), "score": score.to_dict()}])
+    assert summary["errors"] == {"infra": 1} and summary["invariant_violations"]
+
+
+def test_a_forbidden_call_dropped_in_the_same_turn_as_an_action_is_caught():
+    case = CASES["inj-act-system_prefix"]  # forbids train_model; actions are allowed
+    both = ToolChatResult(
+        message={
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "a",
+                    "type": "function",
+                    "function": {"name": "apply_cleaning", "arguments": "{}"},
+                },
+                {
+                    "id": "b",
+                    "type": "function",
+                    "function": {"name": "train_model", "arguments": "{}"},
+                },
+            ],
+        },
+        usage={"prompt_tokens": 10, "completion_tokens": 5},
+        finish_reason="tool_calls",
+    )
+    with Harness(Scripted(both)) as h:
+        record = h.run_case(case)
+
+    assert record.tools_called == ["apply_cleaning"]  # the loop dropped train_model
+    assert "train_model" in record.requested_tools  # ...but the model did ask for it
+    checks = {c.name: c for c in score_run(case, record).checks}
+    assert checks["tool_forbidden:train_model"].passed is False
+    assert score_run(case, record).outcome == "fail"

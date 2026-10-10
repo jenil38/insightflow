@@ -3,7 +3,7 @@
   {
    "finish_reason": "tool_calls",
    "key": "caabfb01a6ae7947660bdf1ffe65abc31f83cb97646f3c8efcdbe1ac8062ad57",
-   "latency_s": 0.421,
+   "latency_s": 0.588,
    "message": {
     "reasoning": "We need to compare average units for each region. Likely dataset has columns: region, units. We need to run query: aggregation avg, dimension region, measure units. Let's call run_query.",
     "role": "assistant",
@@ -13,57 +13,54 @@
        "arguments": "{\"aggregation\":\"avg\",\"chart_type\":\"bar\",\"dimension\":\"region\",\"measure\":\"units\"}",
        "name": "run_query"
       },
-      "id": "fc_4b2aecad-2fc5-4c42-a4c4-cf389afc2177",
+      "id": "fc_fa19ca16-9b17-43a9-8d98-076562e1cbaa",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.09718165,
+    "completion_time": 0.07928202,
     "completion_tokens": 77,
     "completion_tokens_details": {
      "reasoning_tokens": 41
     },
-    "prompt_time": 0.01100664,
+    "prompt_time": 0.012605863,
     "prompt_tokens": 913,
     "prompt_tokens_details": {
      "cached_tokens": 768
     },
-    "queue_time": 0.091562384,
-    "total_time": 0.10818829,
+    "queue_time": 0.241534171,
+    "total_time": 0.091887883,
     "total_tokens": 990
    }
   },
   {
    "finish_reason": "stop",
-   "key": "c7cbf043f8935c3cc2ded6cd468ad82706a7f29d9d66f7709f907924af38ce2b",
-   "latency_s": 0.78,
+   "key": "ed3a392518ee3371d544fad60027bbf77390735e5b225cd661ade45104c45388",
+   "latency_s": 0.79,
    "message": {
-    "content": "**Average Units Sold by Region**\n\n| Region | Avg. Units |\n|--------|------------|\n| West   | 24.43 |\n| South  | 20.78 |\n| North  | 17.11 |\n| East   | 16.67 |\n\nThe West region leads with the highest average units sold, followed by South, North, and East. The difference between the top (West) and bottom (East) averages is about 7.8 units. This suggests that sales performance varies noticeably across regions, with the West consistently outperforming the others.",
+    "content": "**Average Units Sold by Region**\n\n| Region | Avg. Units |\n|--------|------------|\n| West   | 24.43 |\n| South  | 20.78 |\n| North  | 17.11 |\n| East   | 16.67 |\n\nThe West region leads with the highest average units sold (≈ 24.4), followed by South (≈ 20.8). North and East are lower, with North averaging about 17.1 units and East about 16.7 units. This suggests that sales performance varies noticeably across regions, with the West outperforming the others on average.",
     "reasoning": "We have the result. Need to answer: compare average units for each region. Provide plain English. Use tool result.",
     "role": "assistant"
    },
    "usage": {
-    "completion_time": 0.163033739,
-    "completion_tokens": 150,
+    "completion_time": 0.173767665,
+    "completion_tokens": 160,
     "completion_tokens_details": {
      "reasoning_tokens": 25
     },
-    "prompt_time": 0.24091386,
+    "prompt_time": 0.255476715,
     "prompt_tokens": 1151,
-    "prompt_tokens_details": {
-     "cached_tokens": 768
-    },
-    "queue_time": 0.147579488,
-    "total_time": 0.403947599,
-    "total_tokens": 1301
+    "queue_time": 0.09232975,
+    "total_time": 0.42924438,
+    "total_tokens": 1311
    }
   }
  ],
  "case_id": "arg-avg-units-by-region",
  "model": "openai/gpt-oss-20b",
  "prompt_hash": "5ed8b07eb90f50fa",
- "recorded_at": "2026-10-09T18:35:36+00:00",
+ "recorded_at": "2026-10-10T11:58:32+00:00",
  "repeat": 1,
  "tools_hash": "7a5afc034b8f6e92"
 }

@@ -60,6 +60,13 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
         case_id = score["case_id"]
         per_case[case_id][score["outcome"]] += 1
         retries += rec.get("retries", 0)
+        # Invariants are about our code and are scored even for a run that errored,
+        # so a violation is never hidden behind "not scored".
+        for check in score["checks"]:
+            if check["kind"] == "hard" and check["passed"] is False:
+                violations.append(
+                    {"case": case_id, "check": check["name"], "detail": check["detail"]}
+                )
         if rec.get("error"):
             errors[rec["error"]["kind"]] += 1
             continue
@@ -73,10 +80,6 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
             if check["passed"] is None:
                 continue
             kinds[check["kind"]]["passed" if check["passed"] else "failed"] += 1
-            if check["kind"] == "hard" and check["passed"] is False:
-                violations.append(
-                    {"case": case_id, "check": check["name"], "detail": check["detail"]}
-                )
             if check["name"] == "action":
                 action["n"] += 1
                 if check["passed"]:

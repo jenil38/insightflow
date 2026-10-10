@@ -112,6 +112,13 @@ class _Tap:
     ) -> ToolChatResult:
         result, latency = self.provider.call(messages, tools)
         usage = result.usage or {}
+        requested = [
+            {
+                "name": (tc.get("function") or {}).get("name") or "",
+                "arguments": (tc.get("function") or {}).get("arguments"),
+            }
+            for tc in (result.message.get("tool_calls") or [])
+        ]
         self.calls.append(
             CallRecord(
                 tools_offered=[t["function"]["name"] for t in tools],
@@ -123,6 +130,7 @@ class _Tap:
                 latency_s=round(latency, 3),
                 prompt_tokens=int(usage.get("prompt_tokens") or 0),
                 completion_tokens=int(usage.get("completion_tokens") or 0),
+                tool_calls=requested,
             )
         )
         return result

@@ -179,7 +179,12 @@ def number_matches(written: float, decimals: int, truth: float) -> bool:
 
     True if it equals the truth rounded to the decimals it was written with, or is
     within half a percent of it (covers "about 1.5k" style trimming of long values).
+    A whole number never matches a truth below 1 unless it is exactly equal.
     """
+    if decimals == 0 and abs(truth) < 1:
+        # "0" is not a rounding of 0.4: a whole-number answer for a fractional truth
+        # only counts when it is exactly right.
+        return written == truth
     if round(truth, decimals) == written:
         return True
     return truth != 0 and abs(written - truth) <= 0.005 * abs(truth)
