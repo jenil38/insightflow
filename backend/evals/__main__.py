@@ -48,6 +48,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--out", default=str(DEFAULT_OUT))
     run.add_argument("--check-baseline", action="store_true")
+    mrg = sub.add_parser(
+        "merge",
+        help="replace some cases in a full record result with a fresh record of just those",
+    )
+    mrg.add_argument("base")
+    mrg.add_argument("replacement")
+    mrg.add_argument("--out", default=str(DEFAULT_OUT))
     cmp_ = sub.add_parser(
         "compare", help="diff two result files (or a result against a baseline)"
     )
@@ -55,6 +62,11 @@ def _parser() -> argparse.ArgumentParser:
     cmp_.add_argument("after")
     base = sub.add_parser("baseline", help="promote a result to the committed baseline")
     base.add_argument("--accept", required=True, metavar="RESULT_JSON")
+    base.add_argument(
+        "--allow-regression",
+        action="store_true",
+        help="accept even if cases the current baseline passes now fail",
+    )
     resc = sub.add_parser(
         "rescore",
         help="re-apply the current cases and scorers to a stored result, without calling a model",
@@ -69,15 +81,39 @@ def _regression_command(args: argparse.Namespace) -> int:
     """These work on JSON files only and never import the application."""
     from . import compare as cmp
 
+    if args.command == "merge":
+        from .report import render_markdown
+
+        try:
+            merged = cmp.merge_results(
+                cmp.load(Path(args.base)), cmp.load(Path(args.replacement))
+            )
+        except cmp.MergeRefused as exc:
+            print(f"refusing to merge: {exc}", file=sys.stderr)
+            return 2
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stem = out_dir / merged["identity"]["run_id"].replace("+", "_")
+        stem.with_suffix(".json").write_text(
+            json.dumps(merged, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        stem.with_suffix(".md").write_text(render_markdown(merged), encoding="utf-8")
+        print(f"merged result: {stem.with_suffix('.json')}")
+        return 0
     if args.command == "baseline":
         result = cmp.load(Path(args.accept))
-        if result["identity"]["mode"] == "replay":
-            print(
-                "refusing to accept a replay as a baseline: replay does not measure the model",
-                file=sys.stderr,
+        try:
+            written = cmp.accept(
+                result,
+                all_case_ids=[c.id for c in load_cases()],
+                allow_regression=args.allow_regression,
             )
+        except cmp.AcceptRefused as exc:
+            print("refusing to accept this result as the baseline:", file=sys.stderr)
+            for reason in exc.reasons:
+                print(f"  - {reason}", file=sys.stderr)
             return 2
-        print(f"baseline written: {cmp.accept(result)}")
+        print(f"baseline written: {written}")
         return 0
     before, after = cmp.load(Path(args.before)), cmp.load(Path(args.after))
     a = before["summary"]
@@ -87,9 +123,39 @@ def _regression_command(args: argparse.Namespace) -> int:
     return 1 if diff["regressed"] else 0
 
 
+def exit_code_for(mode: str, result: dict) -> int:
+    """1 for anything that must fail a run, whatever flags were given.
+
+    A hard-invariant violation is reported first: it is about our code and must not
+    be overshadowed by a stale cassette or an infrastructure error. In replay mode
+    any run that could not be scored (stale, infrastructure, harness) fails the run
+    too, with or without --check-baseline; replay is deterministic, so an error entry
+    means something is wrong, not something transient.
+    """
+    summ, ident = result["summary"], result["identity"]
+    code = 0
+    if summ["invariant_violations"]:
+        print(
+            f"INVARIANT VIOLATIONS: {len(summ['invariant_violations'])}",
+            file=sys.stderr,
+        )
+        for v in summ["invariant_violations"][:5]:
+            print(f"  - {v['check']} in {v['case']}: {v['detail']}", file=sys.stderr)
+        code = 1
+    if mode == "replay":
+        if summ["errors"].get("stale") or ident.get("replay_leftover_calls"):
+            print("STALE CASSETTES: re-record with a live run", file=sys.stderr)
+            code = 1
+        other = {k: v for k, v in summ["errors"].items() if k != "stale"}
+        if other:
+            print(f"UNSCORED RUNS IN REPLAY: {other}", file=sys.stderr)
+            code = 1
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.command in ("compare", "baseline"):
+    if args.command in ("compare", "baseline", "merge"):
         return _regression_command(args)
     cases = load_cases()
     if args.command == "list":
@@ -128,8 +194,8 @@ def main(argv: list[str] | None = None) -> int:
     from .provider import CassetteStore, LiveProvider, RecordProvider, ReplayProvider
     from .runner import run_suite, write_result
 
+    assert_isolated(str(db_path))  # before anything is created in the database
     env.create_schema()
-    assert_isolated(str(db_path))
     from app.core.config import settings
 
     store = CassetteStore()
@@ -181,19 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     json_path, md_path = write_result(result, Path(args.out))
     print(f"\nreport: {md_path}\nresult: {json_path}")
 
-    summ = result["summary"]
-    exit_code = 0
-    if summ["invariant_violations"]:
-        print(
-            f"INVARIANT VIOLATIONS: {len(summ['invariant_violations'])}",
-            file=sys.stderr,
-        )
-        exit_code = 1
-    if args.mode == "replay" and (
-        summ["errors"].get("stale") or result["identity"].get("replay_leftover_calls")
-    ):
-        print("STALE CASSETTES: re-record with a live run", file=sys.stderr)
-        exit_code = 1
+    exit_code = exit_code_for(args.mode, result)
     if args.mode == "record" and getattr(provider, "failed_runs", None):
         print(
             f"{len(provider.failed_runs)} run(s) not recorded (provider errors); re-run with --resume",

@@ -6,6 +6,7 @@ import json
 
 import pytest
 from evals import compare as cmp
+from evals.compare import AcceptRefused, MergeRefused
 from evals.report import summarize
 
 
@@ -34,7 +35,17 @@ def run(case, category, outcome, repeat=1, error=None):
     }
 
 
-def result(outcomes, *, mode="live", prompt="p1", tools="t1", model="m/x", extra=()):
+def result(
+    outcomes,
+    *,
+    mode="record",
+    prompt="p1",
+    tools="t1",
+    model="m/x",
+    extra=(),
+    repeats=1,
+    **ident,
+):
     runs = [run(c, cat, o) for c, cat, o in outcomes] + list(extra)
     return {
         "identity": {
@@ -43,10 +54,11 @@ def result(outcomes, *, mode="live", prompt="p1", tools="t1", model="m/x", extra
             "model": model,
             "prompt_hash": prompt,
             "tools_hash": tools,
-            "repeats": 1,
-            "single_repeat": True,
+            "repeats": repeats,
+            "single_repeat": repeats == 1,
             "tags": ["all"],
             "n_cases": len(outcomes),
+            **ident,
         },
         "runs": runs,
         "summary": summarize(runs),
@@ -177,3 +189,163 @@ def test_accept_writes_a_per_model_file_that_keeps_identity_and_summary(tmp_path
     data = json.loads(path.read_text())
     assert data["identity"]["prompt_hash"] == "p1" and "per_case" in data["summary"]
     assert "runs" not in data  # transcripts are not committed in the baseline
+
+
+# ----------------------------------------------- review fixes: what may become the baseline
+
+ALL_IDS = [c for c, _, _ in BASE]
+
+
+def refused(res, directory, **kw):
+    with pytest.raises(AcceptRefused) as exc:
+        cmp.accept(res, directory, all_case_ids=ALL_IDS, **kw)
+    return "\n".join(exc.value.reasons)
+
+
+def test_only_a_complete_error_free_record_run_can_become_the_baseline(tmp_path):
+    assert cmp.accept(result(BASE), tmp_path, all_case_ids=ALL_IDS).exists()
+
+
+def test_a_live_or_replay_result_is_refused(tmp_path):
+    for mode in ("live", "replay"):
+        text = refused(result(BASE, mode=mode), tmp_path)
+        assert f"mode is {mode!r}" in text and "cassettes" in text
+
+
+def test_a_partial_result_is_refused(tmp_path):
+    assert "partial: 1 case(s) were not run" in refused(result(BASE[:2]), tmp_path)
+    # Fewer runs for a case than repeats is partial too.
+    assert "fewer than 2 run(s)" in refused(result(BASE, repeats=2), tmp_path)
+
+
+def test_an_errored_or_budget_stopped_result_is_refused(tmp_path):
+    stale = run(
+        "a", "read_only", "not_scored", error={"kind": "infra", "detail": "429"}
+    )
+    assert "errored" in refused(result(BASE[1:], extra=[stale]), tmp_path)
+    assert "budget-stopped" in refused(
+        result(BASE, stopped_early_at_token_budget=True), tmp_path
+    )
+
+
+def test_accepting_a_regression_needs_an_explicit_flag_and_names_the_cases(tmp_path):
+    cmp.accept(result(BASE), tmp_path, all_case_ids=ALL_IDS)
+    worse = [
+        ("a", "read_only", "fail"),
+        ("b", "read_only", "fail"),
+        ("c", "actions", "fail"),
+    ]
+
+    text = refused(result(worse), tmp_path)
+    assert "regression" in text and "a, b" in text and "--allow-regression" in text
+    written = json.loads(cmp.baseline_path("m/x", tmp_path).read_text())
+    assert (
+        written["summary"]["per_case"]["a"]["pass"] == 1
+    )  # the old baseline is untouched
+
+    cmp.accept(result(worse), tmp_path, all_case_ids=ALL_IDS, allow_regression=True)
+    assert (
+        json.loads(cmp.baseline_path("m/x", tmp_path).read_text())["summary"][
+            "per_case"
+        ]["a"]["fail"]
+        == 1
+    )
+
+
+def test_an_improvement_or_first_baseline_needs_no_flag(tmp_path):
+    better = [
+        ("a", "read_only", "pass"),
+        ("b", "read_only", "pass"),
+        ("c", "actions", "pass"),
+    ]
+    cmp.accept(result(BASE), tmp_path, all_case_ids=ALL_IDS)
+    cmp.accept(result(better), tmp_path, all_case_ids=ALL_IDS)
+
+
+# ----------------------------------------------- review fixes: the CI baseline check
+
+
+def test_a_repeats_mismatch_is_reported_as_such_and_not_blamed_on_the_code(
+    baseline_dir,
+):
+    code, text = check(result(BASE, mode="replay", repeats=3), baseline_dir)
+    assert code == 1 and "repeats mismatch" in text
+    assert (
+        "recorded with repeats=1" in text
+        and "--repeats 1" in text
+        and "not a code change" in text
+    )
+    assert "deterministic" not in text and "outcome changed" not in text
+
+
+def test_a_failing_hard_check_fails_even_when_every_outcome_matches(baseline_dir):
+    """Hard checks do not change a case's outcome, so outcomes can match the baseline
+    exactly while an invariant about our code is broken."""
+    broken = run("a", "read_only", "pass")
+    broken["score"]["checks"] = [
+        {
+            "name": "invariant:no_action_executed_in_ask",
+            "kind": "hard",
+            "passed": False,
+            "detail": "executed",
+        }
+    ]
+    res = result(BASE[1:], mode="replay", extra=[broken])
+    assert (
+        res["summary"]["per_case"] == result(BASE, mode="replay")["summary"]["per_case"]
+    )
+
+    code, text = check(res, baseline_dir)
+    assert code == 1 and "hard invariants violated" in text
+    assert "outcome changed" not in text
+    # ...and it is listed before everything else.
+    assert (
+        text.index("hard invariants violated") < len(text) // 2
+        or text.count("  - ") == 1
+    )
+
+
+# ----------------------------------------------------------------------- merge
+
+
+def test_merge_replaces_only_the_re_recorded_cases_and_says_so():
+    base = result(BASE)
+    base["identity"]["run_id"] = "full"
+    fresh = result([("a", "read_only", "fail")])
+    fresh["identity"]["run_id"] = "one"
+    merged = cmp.merge_results(base, fresh)
+
+    outcomes = {r["score"]["case_id"]: r["score"]["outcome"] for r in merged["runs"]}
+    assert outcomes == {"a": "fail", "b": "pass", "c": "fail"}
+    assert merged["identity"]["merged_from"] == ["full", "one"]
+    assert merged["identity"]["replaced_cases"] == ["a"]
+    assert merged["identity"]["mode"] == "record"
+    assert merged["summary"]["per_case"]["a"] == {"pass": 0, "fail": 1, "not_scored": 0}
+    # A merged result is a complete record run, so it can become the baseline.
+    assert not cmp.refusals_to_accept(merged, ALL_IDS)
+
+
+def test_merge_refuses_anything_that_would_not_match_the_cassettes():
+    base = result(BASE)
+    for bad, why in [
+        (result([("a", "read_only", "pass")], mode="live"), "not a record run"),
+        (result([("a", "read_only", "pass")], prompt="p2"), "prompt_hash differs"),
+        (result([("a", "read_only", "pass")], model="other"), "model differs"),
+        (result([("zz", "read_only", "pass")]), "cases the base does not"),
+        (
+            result(
+                [],
+                extra=[
+                    run(
+                        "a",
+                        "read_only",
+                        "not_scored",
+                        error={"kind": "infra", "detail": "x"},
+                    )
+                ],
+            ),
+            "unscored runs",
+        ),
+    ]:
+        with pytest.raises(MergeRefused, match=why):
+            cmp.merge_results(base, bad)

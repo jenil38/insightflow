@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .report import wilson
+from .report import summarize, wilson
 
 BASELINES_DIR = Path(__file__).parent / "baselines"
 DROP_THRESHOLD = 0.10  # a gated rate must fall by at least this much to matter
@@ -60,7 +60,78 @@ def baseline_from_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def accept(result: dict[str, Any], directory: Path = BASELINES_DIR) -> Path:
+class AcceptRefused(Exception):
+    """A result cannot become the baseline. `reasons` says why, one per line."""
+
+    def __init__(self, reasons: list[str]):
+        super().__init__("; ".join(reasons))
+        self.reasons = reasons
+
+
+def refusals_to_accept(result: dict[str, Any], all_case_ids: list[str]) -> list[str]:
+    """Why a result may not be accepted as the baseline (empty means it may).
+
+    The baseline and the cassettes have to describe the same run: CI replays the
+    cassettes and expects to reproduce the baseline. Only a complete record run, in
+    which the cassettes were written by the very run being accepted, guarantees that.
+    """
+    ident, summ = result.get("identity", {}), result.get("summary", {})
+    reasons: list[str] = []
+    if ident.get("mode") != "record":
+        reasons.append(
+            f"mode is {ident.get('mode')!r}: only a record run can be accepted, because only "
+            "it writes the cassettes that CI replays against this baseline"
+        )
+    repeats = int(ident.get("repeats") or 1)
+    counts: dict[str, int] = {}
+    for run in result.get("runs", []):
+        counts[run["score"]["case_id"]] = counts.get(run["score"]["case_id"], 0) + 1
+    missing = sorted(set(all_case_ids) - set(counts))
+    if missing:
+        reasons.append(
+            f"partial: {len(missing)} case(s) were not run (for example {missing[:3]})"
+        )
+    short = sorted(c for c, n in counts.items() if n < repeats)
+    if short:
+        reasons.append(
+            f"partial: {len(short)} case(s) have fewer than {repeats} run(s)"
+        )
+    if summ.get("errors"):
+        reasons.append(f"errored: runs were not scored ({summ['errors']})")
+    if ident.get("stopped_early_at_token_budget"):
+        reasons.append("budget-stopped: the run hit --max-tokens before finishing")
+    return reasons
+
+
+def pass_to_fail_flips(
+    result: dict[str, Any], directory: Path = BASELINES_DIR
+) -> list[dict[str, Any]]:
+    """Cases the existing baseline had passing that this result fails."""
+    path = baseline_path(result["identity"]["model"], directory)
+    if not path.exists():
+        return []
+    existing = load(path)
+    diff = compare(existing["summary"], result["summary"])
+    return [f for f in diff["flips"] if f["change"] == "pass -> fail"]
+
+
+def accept(
+    result: dict[str, Any],
+    directory: Path = BASELINES_DIR,
+    all_case_ids: list[str] | None = None,
+    allow_regression: bool = False,
+) -> Path:
+    reasons = refusals_to_accept(result, all_case_ids or [])
+    if not allow_regression:
+        flips = pass_to_fail_flips(result, directory)
+        if flips:
+            reasons.append(
+                "this would record a regression against the existing baseline (pass to fail): "
+                + ", ".join(f["case"] for f in flips)
+                + ". Pass --allow-regression if that is intended."
+            )
+    if reasons:
+        raise AcceptRefused(reasons)
     directory.mkdir(parents=True, exist_ok=True)
     path = baseline_path(result["identity"]["model"], directory)
     path.write_text(
@@ -71,6 +142,51 @@ def accept(result: dict[str, Any], directory: Path = BASELINES_DIR) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+# ------------------------------------------------------------------------ merge
+
+
+class MergeRefused(Exception):
+    pass
+
+
+def merge_results(base: dict[str, Any], replacement: dict[str, Any]) -> dict[str, Any]:
+    """Replace some cases in a full record result with a fresh record of just those.
+
+    Re-recording one case (its question changed, say) should not cost a whole new
+    pass. Both must be record runs against the same model, prompt and tools, so every
+    run in the merged result still matches a cassette in the repository; the identity
+    states what was merged so nothing is passed off as a single run.
+    """
+    bi, ri = base["identity"], replacement["identity"]
+    for name, result in (("base", base), ("replacement", replacement)):
+        if result["identity"].get("mode") != "record":
+            raise MergeRefused(f"the {name} result is not a record run")
+    for key in ("model", "prompt_hash", "tools_hash", "repeats"):
+        if bi.get(key) != ri.get(key):
+            raise MergeRefused(
+                f"{key} differs ({bi.get(key)!r} vs {ri.get(key)!r}): they are not the same setup"
+            )
+    if replacement["summary"].get("errors"):
+        raise MergeRefused(
+            f"the replacement has unscored runs: {replacement['summary']['errors']}"
+        )
+    replaced = {r["score"]["case_id"] for r in replacement["runs"]}
+    unknown = replaced - {r["score"]["case_id"] for r in base["runs"]}
+    if unknown:
+        raise MergeRefused(
+            f"the replacement has cases the base does not: {sorted(unknown)}"
+        )
+    kept = [r for r in base["runs"] if r["score"]["case_id"] not in replaced]
+    runs = kept + list(replacement["runs"])
+    identity = {
+        **bi,
+        "run_id": f"{bi['run_id']}+{ri['run_id']}",
+        "merged_from": [bi["run_id"], ri["run_id"]],
+        "replaced_cases": sorted(replaced),
+    }
+    return {"identity": identity, "runs": runs, "summary": summarize(runs)}
 
 
 # ---------------------------------------------------------------------- compare
@@ -193,6 +309,23 @@ def check_against_baseline(
     base = load(path)
     problems: list[str] = []
 
+    # Hard invariants first: they are about our code and outrank everything else.
+    if summ["invariant_violations"]:
+        problems.append(f"hard invariants violated: {summ['invariant_violations']}")
+
+    base_repeats, new_repeats = base["identity"].get("repeats"), ident.get("repeats")
+    if base_repeats != new_repeats:
+        problems.append(
+            f"repeats mismatch: the baseline was recorded with repeats={base_repeats} and this "
+            f"replay used repeats={new_repeats}, so per-case counts cannot be compared. This is "
+            f"not a code change: run the replay with --repeats {base_repeats} (cassettes exist "
+            "only for the repeats that were recorded)."
+        )
+        out("BASELINE CHECK FAILED:")
+        for p in problems:
+            out(f"  - {p}")
+        return 1
+
     for key in ("prompt_hash", "tools_hash"):
         if base["identity"].get(key) != ident.get(key):
             problems.append(
@@ -214,8 +347,6 @@ def check_against_baseline(
             )
     if summ["errors"]:
         problems.append(f"runs were not scored: {summ['errors']}")
-    if summ["invariant_violations"]:
-        problems.append(f"hard invariants violated: {summ['invariant_violations']}")
 
     if problems:
         out("BASELINE CHECK FAILED:")

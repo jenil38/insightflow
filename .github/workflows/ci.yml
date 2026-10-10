@@ -70,8 +70,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install ruff==0.16.3
-      - run: ruff check --select E4,E7,E9,F app/ tests/
-      - run: ruff format --check app/ tests/
+      - run: ruff check --select E4,E7,E9,F app/ tests/ evals/
+      - run: ruff format --check app/ tests/ evals/
 
   frontend-build:
     name: Frontend build
