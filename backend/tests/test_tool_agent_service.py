@@ -672,3 +672,73 @@ def test_a_normal_stop_is_still_completed(mock_post, uploaded):
     run = ToolAgentService(db).ask(dataset, user_id, "How many rows?")
 
     assert run.status == "completed" and run.answer == "Eight rows."
+
+
+# ------------------------------------------------------------ column discovery
+
+
+@patch("app.services.chat_service.requests.post")
+def test_after_a_wrong_case_column_the_next_request_lists_the_valid_columns(
+    mock_post, uploaded
+):
+    """The model asked for REVENUE; the dataset has `revenue`. The tool still refuses
+    the guess (exact match is the gate), but the request that carries the refusal back
+    to the model must also carry what exists, or the model can only give up."""
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(
+            200, _tool_call_response("profile_column", {"column": "REVENUE"})
+        ),
+        _mock_response(
+            200, _tool_call_response("profile_column", {"column": "revenue"})
+        ),
+        _mock_response(
+            200, _plain_answer_response("The revenue column averages 1181.")
+        ),
+    ]
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Profile the REVENUE column.")
+
+    steps = (
+        db.query(models.AgentStep)
+        .filter(models.AgentStep.run_id == run.id)
+        .order_by(models.AgentStep.step_number)
+        .all()
+    )
+    assert [s.status for s in steps] == ["tool_error", "ok"]  # the guess was refused
+    second = (
+        mock_post.call_args_list[1].kwargs.get("json")
+        or mock_post.call_args_list[1][1]["json"]
+    )
+    sent = json.dumps(second["messages"])
+    assert "unknown_column" in sent and "valid_columns" in sent
+    assert '\\"revenue\\"' in sent and '\\"region\\"' in sent
+    assert run.status == "completed"
+
+
+@patch("app.services.chat_service.requests.post")
+def test_list_columns_is_offered_to_the_model_and_its_result_is_fenced(
+    mock_post, uploaded
+):
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(200, _tool_call_response("list_columns", {})),
+        _mock_response(200, _plain_answer_response("Six columns.")),
+    ]
+
+    ToolAgentService(db).ask(dataset, user_id, "What columns are there?")
+
+    first = (
+        mock_post.call_args_list[0].kwargs.get("json")
+        or mock_post.call_args_list[0][1]["json"]
+    )
+    assert "list_columns" in {t["function"]["name"] for t in first["tools"]}
+    second = (
+        mock_post.call_args_list[1].kwargs.get("json")
+        or mock_post.call_args_list[1][1]["json"]
+    )
+    tool_message = next(m for m in second["messages"] if m["role"] == "tool")
+    assert (
+        "UNTRUSTED DATA" in tool_message["content"]
+        and "revenue" in tool_message["content"]
+    )

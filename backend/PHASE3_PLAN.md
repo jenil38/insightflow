@@ -436,13 +436,16 @@ let production runs be sliced by prompt version. A separate decision and migrati
   a harness concern, but the ignore file is the natural place to fix it.
 - **Temp-directory cleanup.** Each CLI run creates `agent-eval-*` in the system temp
   directory (database and uploads) and never removes it.
-- **The agent cannot enumerate column names.** No tool lists a dataset's columns:
-  `get_dataset_overview` returns counts, `profile_column` needs a name, and an unknown
-  name returns an error that does not list the valid ones. Column names only surface
-  incidentally (for example `assess_quality` names single-value columns). This limits
-  what a case can ask (see the column-name injection case) and may contribute to the
-  `REVENUE` failure in the first run (a hypothesis; it has not been tested). It is an
-  application matter, not a harness one.
+- **Column discovery was added after the first recordings, and the cassettes are only
+  partly re-recorded.** The agent could not enumerate column names (and the list of
+  valid names an unknown-column error carries was dropped before it reached the model).
+  Both are fixed on this branch: `ToolOutcome.for_model` now passes a failure's detail
+  through, and a read-only `list_columns` tool was added. Adding a tool changes the tool
+  list in every request, so **all cassettes are stale until the full suite is
+  re-recorded**; 10 of 55 were re-recorded before the provider's daily token limit
+  (200,000 for this key, about 180,000 for a full pass) stopped further recording. Until
+  `python -m evals run --mode record --tags all --resume` is completed and a new baseline
+  accepted, the replay job fails by design (a stale cassette is the signal to re-record).
 
 ## Deliberately left out of v1
 

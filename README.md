@@ -115,7 +115,7 @@ python -m pytest tests/ -v
 
 ## Agent evaluation
 
-`backend/evals/` is a harness that scores the tool-calling agent on 54 fixed cases
+`backend/evals/` is a harness that scores the tool-calling agent on 55 fixed cases
 (read-only questions, tool arguments, out-of-scope questions, action behaviour, and
 prompt-injection phrasings). It runs the real agent code with only the model swapped
 for a live, recorded or replayed provider. See `backend/PHASE3_PLAN.md` for the design.

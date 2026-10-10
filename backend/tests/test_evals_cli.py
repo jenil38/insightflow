@@ -34,7 +34,7 @@ def cli(*args, env_extra=None):
 
 def test_list_prints_every_case():
     out = cli("list")
-    assert out.returncode == 0 and "54 cases" in out.stdout
+    assert out.returncode == 0 and "55 cases" in out.stdout
     assert "inj-ro-literal_english" in out.stdout
 
 
@@ -44,7 +44,7 @@ def test_replay_of_committed_cassettes_exits_zero_and_writes_a_report(tmp_path):
         "--mode",
         "replay",
         "--cases",
-        "ro-rows-cols-sales30,act-on-clean",
+        "act-off-clean,act-on-clean",
         "--out",
         str(tmp_path),
     )
