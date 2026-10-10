@@ -277,7 +277,7 @@ class AgentRun(Base):
     answer = Column(Text, nullable=True)
     status = Column(
         String, nullable=False, default="running"
-    )  # running | completed | error | step_limit | awaiting_confirmation
+    )  # running | completed | error | step_limit | awaiting_confirmation | truncated
     allow_actions = Column(Boolean, nullable=False, default=False)
     total_prompt_tokens = Column(Integer, nullable=True, default=0)
     total_completion_tokens = Column(Integer, nullable=True, default=0)
