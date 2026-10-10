@@ -28,6 +28,10 @@ class CallRecord:
     latency_s: float
     prompt_tokens: int
     completion_tokens: int
+    # The tool calls the model asked for in this response, as it asked for them
+    # ({"name", "arguments"}). The loop may drop some (it stops at the first action
+    # tool in a turn), so these can be more than the recorded steps.
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -53,6 +57,12 @@ class RunRecord:
     @property
     def tools_called(self) -> list[str]:
         return [s.tool for s in self.steps]
+
+    @property
+    def requested_tools(self) -> list[str]:
+        """Every tool the model asked for, across all provider calls, including any
+        the loop did not execute."""
+        return [c["name"] for call in self.calls for c in call.tool_calls]
 
     @property
     def provider_latency_s(self) -> float:

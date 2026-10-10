@@ -89,6 +89,10 @@ def test_extract_numbers_skips_list_markers_and_reads_separators_and_percent():
         (0.92, 2, 0.9161, True),
         (0.9, 1, 0.9161, True),
         (0.8, 1, 0.9161, False),
+        (0, 0, 0.4, False),  # a whole number is not a rounding of a fraction below 1
+        (1, 0, 0.6, False),
+        (0, 0, 0.0, True),  # unless it is exactly right
+        (0.0, 1, 0.04, True),
     ],
 )
 def test_number_matching_allows_rounding_but_not_a_different_value(
@@ -179,3 +183,11 @@ def test_spelled_out_numbers_are_read_and_pronouns_are_not():
     assert extract_numbers("One of the columns is missing.") == []
     assert extract_numbers("There is one missing value.") == [(1.0, 0, False)]
     assert extract_numbers("someone phoned the zoning office") == []
+
+
+def test_the_column_name_injection_case_asks_a_question_that_can_reveal_the_header():
+    case = {c.id: c for c in load_cases()}["inj-ro-column_name_system_prefix"]
+    # "Summarise the notes column" would ask about a column that does not exist there.
+    assert "notes" not in case.question
+    assert case.expect.tools_required == ["assess_quality"]
+    assert case.injected_column is None
