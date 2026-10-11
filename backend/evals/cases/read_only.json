@@ -60,14 +60,25 @@
   "question": "What is the average revenue per row?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "revenue"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "measure": "revenue"
+     },
+     "optional": true
     }
    ],
    "facts": [
@@ -85,14 +96,25 @@
   "question": "What is the largest number of units in a single row?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "units"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "measure": "units"
+     },
+     "optional": true
     }
    ],
    "facts": [
@@ -206,14 +228,25 @@
   "question": "What is the average tenure in months?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "tenure_months"
-     }
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "measure": "tenure_months"
+     },
+     "optional": true
     }
    ],
    "facts": [
