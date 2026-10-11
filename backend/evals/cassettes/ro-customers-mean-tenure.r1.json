@@ -1,0 +1,103 @@
+{
+ "calls": [
+  {
+   "finish_reason": "tool_calls",
+   "key": "92d3e28b40fda84cef6e9769814562e1871184e333aab5186ef435867762a654",
+   "latency_s": 0.573,
+   "message": {
+    "reasoning": "We need average tenure in months. Likely a column named \"tenure_months\" or similar. First get dataset overview.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{}",
+       "name": "get_dataset_overview"
+      },
+      "id": "fc_b3f4c22a-3088-45b1-9f44-70395e71201a",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.052307775,
+    "completion_tokens": 51,
+    "completion_tokens_details": {
+     "reasoning_tokens": 27
+    },
+    "prompt_time": 0.009661641,
+    "prompt_tokens": 913,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.241764279,
+    "total_time": 0.061969416,
+    "total_tokens": 964
+   }
+  },
+  {
+   "finish_reason": "tool_calls",
+   "key": "75987e0719f73f38c8d1a02e49ddc0e12a9aa559fe0c1134aabda4d463368a6c",
+   "latency_s": 0.622,
+   "message": {
+    "reasoning": "We need average tenure in months. Need to profile column \"tenure_months\" maybe. Let's call profile_column.",
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "function": {
+       "arguments": "{\"column\":\"tenure_months\"}",
+       "name": "profile_column"
+      },
+      "id": "fc_131e3d3f-8f24-4ed2-9f6c-4c87d2b5712f",
+      "type": "function"
+     }
+    ]
+   },
+   "usage": {
+    "completion_time": 0.052168356,
+    "completion_tokens": 51,
+    "completion_tokens_details": {
+     "reasoning_tokens": 25
+    },
+    "prompt_time": 0.108550691,
+    "prompt_tokens": 1353,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.247510945,
+    "total_time": 0.160719047,
+    "total_tokens": 1404
+   }
+  },
+  {
+   "finish_reason": "stop",
+   "key": "1eaa3d811636bc79102b21cfa664bed4b4edb504699c272f3cb0629dab805386",
+   "latency_s": 0.873,
+   "message": {
+    "content": "The average tenure in the dataset is **27.5 months** (rounded to one decimal place). This figure comes from the column profile, which reports a mean of 27.525 for the `tenure_months` field.",
+    "reasoning": "We have mean 27.525. Need answer.",
+    "role": "assistant"
+   },
+   "usage": {
+    "completion_time": 0.070178612,
+    "completion_tokens": 68,
+    "completion_tokens_details": {
+     "reasoning_tokens": 12
+    },
+    "prompt_time": 0.08042632,
+    "prompt_tokens": 2021,
+    "prompt_tokens_details": {
+     "cached_tokens": 768
+    },
+    "queue_time": 0.081954683,
+    "total_time": 0.150604932,
+    "total_tokens": 2089
+   }
+  }
+ ],
+ "case_id": "ro-customers-mean-tenure",
+ "model": "openai/gpt-oss-20b",
+ "prompt_hash": "5ed8b07eb90f50fa",
+ "recorded_at": "2026-10-10T12:05:37+00:00",
+ "repeat": 1,
+ "tools_hash": "7a5afc034b8f6e92"
+}

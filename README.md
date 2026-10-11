@@ -113,6 +113,54 @@ python -m pytest tests/ -v
 
 106 tests covering authentication, dataset CRUD, ML pipeline (training, history, explainability, reports), data quality, cleaning, analytics, security (tenant isolation, inactive users, password reset), and file validation.
 
+## Agent evaluation
+
+`backend/evals/` is a harness that scores the tool-calling agent on 54 fixed cases
+(read-only questions, tool arguments, out-of-scope questions, action behaviour, and
+prompt-injection phrasings). It runs the real agent code with only the model swapped
+for a live, recorded or replayed provider. See `backend/PHASE3_PLAN.md` for the design.
+
+```bash
+cd backend
+python -m evals list                                            # the cases
+python -m evals run --mode replay --tags all --check-baseline   # what CI runs
+python -m evals run --mode live --tags smoke --repeats 3        # real model, for measuring; needs GROQ_API_KEY
+python -m evals run --mode record --tags all                    # re-record cassettes AND produce a baseline candidate
+python -m evals compare evals/baselines/<model>.json evals/results/<run>.json
+python -m evals baseline --accept evals/results/<record-run>.json [--allow-regression]
+python -m evals rescore evals/results/<run>.json                # re-apply scorers to stored records, no model call
+```
+
+- **CI runs replay only.** Live and record spend the Groq key and are limited to
+  8,000 tokens a minute, so they are run by hand and paced (`--tpm`, default 6,000).
+- **Replay proves the code around the model, not the model.** Cassettes are keyed on
+  the full request, so a change to the system prompt, a tool description, or a tool's
+  output makes replay fail as a stale cassette. That is the signal to run live.
+- **The baseline and the cassettes describe the same run.** `baseline --accept` takes
+  only a complete, error-free **record** run (not live, replay, partial, errored or
+  budget-stopped), and refuses to overwrite a baseline with one that fails cases the
+  current baseline passes unless you pass `--allow-regression`. A baseline is one
+  repeat of each case, matching the one repeat CI replays.
+- **Changing the prompt:**
+  1. Edit it. `run --mode live --repeats 3` and `compare` it against the baseline to see
+     the effect. This is measurement only; a live result cannot become the baseline.
+  2. If the change is wanted, `run --mode record --tags all` (one repeat) rewrites the
+     cassettes and produces the new baseline candidate; `compare` it, then
+     `baseline --accept` it. Commit cassettes and baseline together.
+  3. If you record with `--repeats N` for some reason, replay with `--repeats N` too;
+     the baseline check reports a repeats mismatch explicitly.
+- **Re-recording one case** (its question changed, say): `run --mode record --cases <id>`
+  then `merge evals/results/<full-record>.json evals/results/<one-case>.json`, then
+  `rescore` and `baseline --accept` the merged result. Both must be record runs with the
+  same model, prompt and tools.
+- **Replay fails on any error.** A stale cassette, an infrastructure error or a harness
+  error in a replay is exit 1, with or without `--check-baseline`; a violated invariant
+  is reported before all of those.
+- **Record on the pinned stack** (Python 3.12 and `requirements.txt`): tool outputs
+  depend on the pandas version, so cassettes recorded on a different one replay as stale.
+- **Not measured:** whether free-text answers are faithful or good. There is no judge
+  model; a passing run can still contain a poor answer.
+
 ## License
 
 MIT

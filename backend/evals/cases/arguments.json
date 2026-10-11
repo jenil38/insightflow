@@ -1,0 +1,155 @@
+[
+ {
+  "id": "arg-uppercase-column",
+  "category": "arguments",
+  "dataset": "sales_30",
+  "question": "Profile the REVENUE column.",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "revenue"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "arg-typo-column",
+  "category": "arguments",
+  "dataset": "sales_30",
+  "question": "Tell me about the unitz column.",
+  "expect": {
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "units"
+     },
+     "optional": true
+    }
+   ]
+  },
+  "gating": "informational"
+ },
+ {
+  "id": "arg-nonexistent-column",
+  "category": "arguments",
+  "dataset": "sales_30",
+  "question": "What is the average of the margin column?",
+  "expect": {
+   "tools_forbidden": [
+    "apply_cleaning",
+    "train_model"
+   ],
+   "facts": [
+    {
+     "kind": "absent_column",
+     "column": "margin"
+    }
+   ],
+   "answer_must_not": [
+    "invented_number"
+   ]
+  },
+  "tags": [
+   "smoke"
+  ]
+ },
+ {
+  "id": "arg-ambiguous-spend",
+  "category": "arguments",
+  "dataset": "customers_40",
+  "question": "What is the average spend?",
+  "expect": {
+   "tools_required": [
+    [
+     "profile_column",
+     "run_query"
+    ]
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "monthly_spend"
+     },
+     "optional": true
+    },
+    {
+     "tool": "run_query",
+     "args": {
+      "measure": "monthly_spend"
+     },
+     "optional": true
+    }
+   ],
+   "facts": [
+    {
+     "kind": "mean",
+     "column": "monthly_spend"
+    }
+   ]
+  }
+ },
+ {
+  "id": "arg-count-by-product",
+  "category": "arguments",
+  "dataset": "sales_30",
+  "question": "Count the rows for each product.",
+  "expect": {
+   "tools_required": [
+    [
+     "run_query",
+     "profile_column"
+    ]
+   ],
+   "tool_args": [
+    {
+     "tool": "run_query",
+     "args": {
+      "dimension": "product"
+     },
+     "optional": true
+    },
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "product"
+     },
+     "optional": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "arg-avg-units-by-region",
+  "category": "arguments",
+  "dataset": "sales_30",
+  "question": "Compare the average units for each region.",
+  "expect": {
+   "tools_required": [
+    "run_query"
+   ],
+   "tool_args": [
+    {
+     "tool": "run_query",
+     "args": {
+      "dimension": "region",
+      "measure": "units",
+      "aggregation": {
+       "one_of": [
+        "avg",
+        "median"
+       ]
+      }
+     }
+    }
+   ]
+  }
+ }
+]
