@@ -19,6 +19,31 @@
   }
  },
  {
+  "id": "arg-wrong-case-profile",
+  "category": "arguments",
+  "dataset": "customers_40",
+  "question": "Profile the Tenure_Months column.",
+  "expect": {
+   "tools_required": [
+    "profile_column"
+   ],
+   "tool_args": [
+    {
+     "tool": "profile_column",
+     "args": {
+      "column": "tenure_months"
+     }
+    }
+   ],
+   "facts": [
+    {
+     "kind": "mean",
+     "column": "tenure_months"
+    }
+   ]
+  }
+ },
+ {
   "id": "arg-typo-column",
   "category": "arguments",
   "dataset": "sales_30",

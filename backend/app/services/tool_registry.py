@@ -121,10 +121,19 @@ class ToolOutcome:
 
     def for_model(self) -> Any:
         """What the model sees. An error is handed back as a plain object so it
-        reads as a result to act on, not as a crash."""
+        reads as a result to act on, not as a crash.
+
+        Detail a handler attached to a failure (`_ToolError.extra`, held in `value`)
+        is included: an unknown column is only recoverable if the model is shown
+        which columns exist. It used to be dropped here, so the list was built and
+        then never reached the model.
+        """
         if self.ok:
             return self.value
-        return {"error": self.error, "error_code": self.error_code}
+        payload = {"error": self.error, "error_code": self.error_code}
+        if isinstance(self.value, dict):
+            payload.update(self.value)
+        return payload
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +213,24 @@ def _dataset_overview(ctx: ToolContext, _args: NoArgs) -> Any:
         "profile": profile_dataframe(df, ctx.dataset.size_bytes or 0),
         "quality": compute_quality_scores(df),
     }
+
+
+def _column_kind(series: pd.Series) -> str:
+    """A coarse type that does not depend on the installed pandas version (which
+    spells a string column "object" in one release and "str" in the next)."""
+    if pd.api.types.is_bool_dtype(series):
+        return "true/false"
+    if pd.api.types.is_numeric_dtype(series):
+        return "number"
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return "date"
+    return "text"
+
+
+def _list_columns(ctx: ToolContext, _args: NoArgs) -> Any:
+    df = ctx.frame()
+    columns = [{"name": str(c), "type": _column_kind(df[c])} for c in df.columns]
+    return {"column_count": len(columns), "columns": columns}
 
 
 def _profile_column(ctx: ToolContext, args: ProfileColumnArgs) -> Any:
@@ -371,6 +398,18 @@ TOOLS: tuple[Tool, ...] = (
         ),
         args_model=NoArgs,
         handler=_dataset_overview,
+        read_only=True,
+    ),
+    Tool(
+        name="list_columns",
+        description=(
+            "List this dataset's actual column names and their types (number, text, "
+            "date, true/false). Column names are case-sensitive and must be used "
+            "exactly as listed, so call this before profiling or querying a column "
+            "whose exact spelling or capitalisation you are not sure of."
+        ),
+        args_model=NoArgs,
+        handler=_list_columns,
         read_only=True,
     ),
     Tool(

@@ -85,9 +85,9 @@ def action_ctx(uploaded):
 # ----------------------------------------------------------------- schemas
 
 
-def test_ten_tools_are_registered():
-    assert len(TOOLS) == 10
-    assert len([t for t in TOOLS if t.read_only]) == 8
+def test_eleven_tools_are_registered():
+    assert len(TOOLS) == 11
+    assert len([t for t in TOOLS if t.read_only]) == 9
     assert sorted(t.name for t in TOOLS if not t.read_only) == [
         "apply_cleaning",
         "train_model",
@@ -98,7 +98,7 @@ def test_action_tools_are_omitted_when_actions_are_not_allowed():
     names = {t.name for t in tools_for(allow_actions=False)}
     assert "apply_cleaning" not in names
     assert "train_model" not in names
-    assert len(names) == 8
+    assert len(names) == 9
 
     allowed = {t.name for t in tools_for(allow_actions=True)}
     assert "apply_cleaning" in allowed and "train_model" in allowed
@@ -106,7 +106,7 @@ def test_action_tools_are_omitted_when_actions_are_not_allowed():
 
 def test_schema_is_shaped_for_the_provider():
     schema = tools_schema(allow_actions=True)
-    assert len(schema) == 10
+    assert len(schema) == 11
     entry = next(s for s in schema if s["function"]["name"] == "run_query")
 
     assert entry["type"] == "function"
@@ -319,6 +319,58 @@ def test_errors_are_handed_to_the_model_as_data(ctx):
 
     assert payload["error_code"] == "unknown_column"
     assert payload["error"]
+
+
+def test_the_valid_column_names_reach_the_model_when_it_guesses_wrong(ctx):
+    """The handler attached the valid names to the error, but `for_model` once
+    dropped them, so the model was told the column was missing and not what exists.
+    The existing check only looked at `outcome.value`, which the model never sees."""
+    outcome = execute_tool(ctx, "profile_column", {"column": "REVENUE"})
+    payload = outcome.for_model()
+
+    assert payload["error_code"] == "unknown_column"
+    assert "revenue" in payload["valid_columns"] and payload["column_count"] == 6
+
+
+def test_failures_without_extra_detail_are_shaped_as_before(ctx):
+    payload = execute_tool(
+        ctx, "get_dataset_overview", ["not", "an", "object"]
+    ).for_model()
+    assert set(payload) == {"error", "error_code"}
+
+
+def test_the_exact_match_gate_is_unchanged_by_column_discovery(ctx):
+    """Showing the model the valid names must not make the tool forgiving: a
+    wrongly cased name is still refused, not silently corrected."""
+    for wrong in ("REVENUE", "Revenue", "revenu", " revenue"):
+        outcome = execute_tool(ctx, "profile_column", {"column": wrong})
+        assert (
+            outcome.status == STATUS_TOOL_ERROR
+            and outcome.error_code == "unknown_column"
+        )
+    assert (
+        execute_tool(ctx, "profile_column", {"column": "revenue"}).status == STATUS_OK
+    )
+
+
+def test_list_columns_returns_the_actual_names_and_coarse_types_in_order(ctx):
+    outcome = execute_tool(ctx, "list_columns", {})
+
+    assert outcome.status == STATUS_OK
+    names = [c["name"] for c in outcome.value["columns"]]
+    assert names == ["date", "region", "product", "units", "price", "revenue"]
+    assert outcome.value["column_count"] == 6
+    kinds = {c["name"]: c["type"] for c in outcome.value["columns"]}
+    assert kinds["units"] == "number" and kinds["region"] == "text"
+    assert kinds["revenue"] == "number"
+
+
+def test_list_columns_takes_no_arguments_and_is_read_only(ctx):
+    assert next(t for t in TOOLS if t.name == "list_columns").read_only is True
+    assert (
+        execute_tool(ctx, "list_columns", {"dataset_id": 2}).status
+        == STATUS_INVALID_ARGUMENTS
+    )
 
 
 def test_a_handler_crash_becomes_an_outcome_not_an_exception(ctx, monkeypatch):

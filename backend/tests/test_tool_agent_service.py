@@ -594,3 +594,151 @@ def test_injection_cannot_train_a_model_without_a_decision(
     assert dataset.cleaned_path is None
     assert [s.status for s in _steps(db, run)] == ["ok", "pending_confirmation"]
     assert _steps(db, run)[0].redacted is True
+
+
+# ----------------------------------------------------------- truncated answers
+
+
+def _truncated_response(content=None):
+    """A response that stopped because it hit the token limit, not because it was done
+    (what a reasoning model returns when it spends the whole budget thinking)."""
+    return {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": content,
+                    "tool_calls": None,
+                },
+                "finish_reason": "length",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 1500,
+            "completion_tokens": 1024,
+            "total_tokens": 2524,
+        },
+    }
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_response_cut_off_before_any_text_is_not_a_completed_run(mock_post, uploaded):
+    """The incident: tools ran, then the model returned finish_reason=length with empty
+    content. The run used to be `completed` with a blank answer."""
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(200, _tool_call_response("get_dataset_overview", {})),
+        _mock_response(200, _truncated_response(content="")),
+    ]
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Summarise the data")
+
+    assert run.status == "truncated"
+    assert run.answer and "cut off" in run.answer
+    assert mock_post.call_count == 2  # it does not keep calling the model
+    assert run.total_completion_tokens == 20 + 1024  # the spend is still recorded
+    assert run.finished_at is not None and run.pending_action is None
+
+
+@patch("app.services.chat_service.requests.post")
+def test_content_that_is_none_is_handled_the_same_way(mock_post, uploaded):
+    db, dataset, user_id = uploaded
+    mock_post.return_value = _mock_response(200, _truncated_response(content=None))
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Hello")
+
+    assert run.status == "truncated" and "cut off" in run.answer
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_partial_answer_is_kept_but_marked_as_cut_off(mock_post, uploaded):
+    db, dataset, user_id = uploaded
+    mock_post.return_value = _mock_response(
+        200, _truncated_response(content="Revenue is highest in the North and")
+    )
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Which region leads?")
+
+    assert run.status == "truncated"
+    assert run.answer.startswith("Revenue is highest in the North and")
+    assert "cut off" in run.answer
+
+
+@patch("app.services.chat_service.requests.post")
+def test_a_normal_stop_is_still_completed(mock_post, uploaded):
+    db, dataset, user_id = uploaded
+    mock_post.return_value = _mock_response(200, _plain_answer_response("Eight rows."))
+
+    run = ToolAgentService(db).ask(dataset, user_id, "How many rows?")
+
+    assert run.status == "completed" and run.answer == "Eight rows."
+
+
+# ------------------------------------------------------------ column discovery
+
+
+@patch("app.services.chat_service.requests.post")
+def test_after_a_wrong_case_column_the_next_request_lists_the_valid_columns(
+    mock_post, uploaded
+):
+    """The model asked for REVENUE; the dataset has `revenue`. The tool still refuses
+    the guess (exact match is the gate), but the request that carries the refusal back
+    to the model must also carry what exists, or the model can only give up."""
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(
+            200, _tool_call_response("profile_column", {"column": "REVENUE"})
+        ),
+        _mock_response(
+            200, _tool_call_response("profile_column", {"column": "revenue"})
+        ),
+        _mock_response(
+            200, _plain_answer_response("The revenue column averages 1181.")
+        ),
+    ]
+
+    run = ToolAgentService(db).ask(dataset, user_id, "Profile the REVENUE column.")
+
+    steps = (
+        db.query(models.AgentStep)
+        .filter(models.AgentStep.run_id == run.id)
+        .order_by(models.AgentStep.step_number)
+        .all()
+    )
+    assert [s.status for s in steps] == ["tool_error", "ok"]  # the guess was refused
+    second = (
+        mock_post.call_args_list[1].kwargs.get("json")
+        or mock_post.call_args_list[1][1]["json"]
+    )
+    sent = json.dumps(second["messages"])
+    assert "unknown_column" in sent and "valid_columns" in sent
+    assert '\\"revenue\\"' in sent and '\\"region\\"' in sent
+    assert run.status == "completed"
+
+
+@patch("app.services.chat_service.requests.post")
+def test_list_columns_is_offered_to_the_model_and_its_result_is_fenced(
+    mock_post, uploaded
+):
+    db, dataset, user_id = uploaded
+    mock_post.side_effect = [
+        _mock_response(200, _tool_call_response("list_columns", {})),
+        _mock_response(200, _plain_answer_response("Six columns.")),
+    ]
+
+    ToolAgentService(db).ask(dataset, user_id, "What columns are there?")
+
+    first = (
+        mock_post.call_args_list[0].kwargs.get("json")
+        or mock_post.call_args_list[0][1]["json"]
+    )
+    assert "list_columns" in {t["function"]["name"] for t in first["tools"]}
+    second = (
+        mock_post.call_args_list[1].kwargs.get("json")
+        or mock_post.call_args_list[1][1]["json"]
+    )
+    tool_message = next(m for m in second["messages"] if m["role"] == "tool")
+    assert (
+        "UNTRUSTED DATA" in tool_message["content"]
+        and "revenue" in tool_message["content"]
+    )
