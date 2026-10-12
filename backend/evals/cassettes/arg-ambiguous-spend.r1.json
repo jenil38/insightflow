@@ -2,10 +2,10 @@
  "calls": [
   {
    "finish_reason": "tool_calls",
-   "key": "f28b794b27734cee77a3ebc1f62d37bec910c370dabc739b53e6083b049fd212",
-   "latency_s": 0.454,
+   "key": "b46f0474af29cd31f4a525791fa3f7bba2a720ef5b23896bb726def74b7730d9",
+   "latency_s": 0.725,
    "message": {
-    "reasoning": "We need average spend. Likely a column named \"Spend\" or \"spend\" or \"amount\". Let's list columns.",
+    "reasoning": "We need to answer \"What is the average spend?\" We need to know which column is spend. We should list columns. Then profile the spend column. Then run query to compute average. Let's call list_columns.",
     "role": "assistant",
     "tool_calls": [
      {
@@ -13,30 +13,30 @@
        "arguments": "{}",
        "name": "list_columns"
       },
-      "id": "fc_76771df3-361e-40ce-a0cc-f5fe16c46a3e",
+      "id": "fc_0a068dba-0f97-46b2-927e-ff8c293f59d5",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.070238792,
-    "completion_tokens": 49,
+    "completion_time": 0.102182309,
+    "completion_tokens": 66,
     "completion_tokens_details": {
-     "reasoning_tokens": 27
+     "reasoning_tokens": 44
     },
-    "prompt_time": 0.072360618,
-    "prompt_tokens": 983,
-    "queue_time": 0.048308596,
-    "total_time": 0.14259941,
-    "total_tokens": 1032
+    "prompt_time": 0.06227425,
+    "prompt_tokens": 1128,
+    "queue_time": 0.307993569,
+    "total_time": 0.164456559,
+    "total_tokens": 1194
    }
   },
   {
    "finish_reason": "tool_calls",
-   "key": "9c8c6838728a81df1a2ce44c17cb9d5d5558d6293227053dc17af8e884de4338",
-   "latency_s": 0.772,
+   "key": "36d91c89fd43b1447210890ec904830675b0002365138b8bda73a680db699f31",
+   "latency_s": 0.415,
    "message": {
-    "reasoning": "We need average spend. Likely monthly_spend column. Use run_query avg on monthly_spend.",
+    "reasoning": "We need average spend. Likely monthly_spend. Use run_query.",
     "role": "assistant",
     "tool_calls": [
      {
@@ -44,54 +44,51 @@
        "arguments": "{\"aggregation\":\"avg\",\"chart_type\":\"kpi\",\"measure\":\"monthly_spend\"}",
        "name": "run_query"
       },
-      "id": "fc_5f1deb22-d330-49d0-95f9-ff82f787c5b2",
+      "id": "fc_2012355b-c596-4470-8b72-9a0cbbdf469d",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.058135056,
-    "completion_tokens": 57,
+    "completion_time": 0.077807771,
+    "completion_tokens": 51,
     "completion_tokens_details": {
-     "reasoning_tokens": 22
+     "reasoning_tokens": 16
     },
-    "prompt_time": 0.079866122,
-    "prompt_tokens": 1147,
-    "queue_time": 0.202339625,
-    "total_time": 0.138001178,
-    "total_tokens": 1204
+    "prompt_time": 0.07743685,
+    "prompt_tokens": 1292,
+    "queue_time": 0.030896029,
+    "total_time": 0.155244621,
+    "total_tokens": 1343
    }
   },
   {
    "finish_reason": "stop",
-   "key": "3f20ba7553bd8f221fe4e867e5905d452a5b1c1b77da0f406da90a4782eccf19",
-   "latency_s": 1.563,
+   "key": "d9cfa0e1e4a9d88553ac9c3ba9dcfda644dc030a352d5ed47cae050eec57969c",
+   "latency_s": 0.97,
    "message": {
-    "content": "The average monthly spend across all customers is **$74.27**.\n\n*Tool used:* `run_query` – calculated the average of the `monthly_spend` column.",
+    "content": "The average monthly spend across all customers is **$74.27**.\n\n*Tool results used:*  \n- `list_columns` to confirm the column name `monthly_spend`.  \n- `run_query` with `aggregation: \"avg\"` on `monthly_spend` to compute the average.",
     "reasoning": "We have the answer: average spend 74.27. Need to state tool results used.",
     "role": "assistant"
    },
    "usage": {
-    "completion_time": 0.070504579,
-    "completion_tokens": 65,
+    "completion_time": 0.09576439,
+    "completion_tokens": 89,
     "completion_tokens_details": {
      "reasoning_tokens": 20
     },
-    "prompt_time": 0.667699827,
-    "prompt_tokens": 1259,
-    "prompt_tokens_details": {
-     "cached_tokens": 1024
-    },
-    "queue_time": 0.214317475,
-    "total_time": 0.738204406,
-    "total_tokens": 1324
+    "prompt_time": 0.082092748,
+    "prompt_tokens": 1404,
+    "queue_time": 0.148300154,
+    "total_time": 0.177857138,
+    "total_tokens": 1493
    }
   }
  ],
  "case_id": "arg-ambiguous-spend",
  "model": "openai/gpt-oss-20b",
  "prompt_hash": "5ed8b07eb90f50fa",
- "recorded_at": "2026-10-11T12:56:08+00:00",
+ "recorded_at": "2026-10-12T19:03:12+00:00",
  "repeat": 1,
- "tools_hash": "478141d0dfdcea89"
+ "tools_hash": "102ccb8c19914400"
 }

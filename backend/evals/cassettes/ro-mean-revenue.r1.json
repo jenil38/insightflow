@@ -2,8 +2,8 @@
  "calls": [
   {
    "finish_reason": "tool_calls",
-   "key": "47371a6831d897b2ebf751878bfbba832a58e11f2a443a847742cf200411d8fe",
-   "latency_s": 0.368,
+   "key": "f6f54895e925fa96c9c845fa1034ff88da64406512712fdb30d31ab072af4919",
+   "latency_s": 0.824,
    "message": {
     "reasoning": "We need to compute average revenue per row. We need to know column name for revenue. Let's list columns.",
     "role": "assistant",
@@ -13,30 +13,33 @@
        "arguments": "{}",
        "name": "list_columns"
       },
-      "id": "fc_8a045c30-2642-4ae7-a6ce-b847f9ae3d58",
+      "id": "fc_6e7d756b-1553-4c1a-ab28-63ca013b5ddc",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.045944993,
+    "completion_time": 0.052025689,
     "completion_tokens": 45,
     "completion_tokens_details": {
      "reasoning_tokens": 23
     },
-    "prompt_time": 0.052391305,
-    "prompt_tokens": 985,
-    "queue_time": 0.031271796,
-    "total_time": 0.098336298,
-    "total_tokens": 1030
+    "prompt_time": 0.057447732,
+    "prompt_tokens": 1130,
+    "prompt_tokens_details": {
+     "cached_tokens": 1024
+    },
+    "queue_time": 0.191494141,
+    "total_time": 0.109473421,
+    "total_tokens": 1175
    }
   },
   {
    "finish_reason": "tool_calls",
-   "key": "11ecf917a21a2d66d4af831bf7ba6ceffd3230f12a14ecdbbafadcbce78f78a9",
-   "latency_s": 0.487,
+   "key": "9226039aa27d6ff7cbf8001af1bbdfa2021b7ad5501771787707185682de8c73",
+   "latency_s": 0.345,
    "message": {
-    "reasoning": "We need average revenue per row. We need to run query: measure revenue, aggregation avg, chart_type kpi.",
+    "reasoning": "We need average revenue per row. Use run_query aggregation avg on revenue.",
     "role": "assistant",
     "tool_calls": [
      {
@@ -44,51 +47,54 @@
        "arguments": "{\"aggregation\":\"avg\",\"chart_type\":\"kpi\",\"measure\":\"revenue\"}",
        "name": "run_query"
       },
-      "id": "fc_857873b8-d8c7-40e8-badf-dc3f32016cda",
+      "id": "fc_de161b3d-2605-4689-b3c0-ff7602dfe501",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.061530829,
-    "completion_tokens": 59,
+    "completion_time": 0.063133342,
+    "completion_tokens": 50,
     "completion_tokens_details": {
-     "reasoning_tokens": 25
+     "reasoning_tokens": 16
     },
-    "prompt_time": 0.091498752,
-    "prompt_tokens": 1130,
-    "queue_time": 0.117834831,
-    "total_time": 0.153029581,
-    "total_tokens": 1189
+    "prompt_time": 0.075620068,
+    "prompt_tokens": 1275,
+    "queue_time": 0.008053349,
+    "total_time": 0.13875341,
+    "total_tokens": 1325
    }
   },
   {
    "finish_reason": "stop",
-   "key": "b769c3acb50925857c18a806fad199a10492ce5700c2cc9d3b345cebb4b1920b",
-   "latency_s": 0.873,
+   "key": "c120028b44b9a85807d8c3cd7783f62bb7ddb7bfa12c2a4238b6e5f004855877",
+   "latency_s": 0.755,
    "message": {
-    "content": "The average revenue per row in the dataset is **$273.34**.  \nThis figure comes from running an average aggregation on the *revenue* column (using the `run_query` tool).",
-    "reasoning": "We have the answer: average revenue per row is 273.34. Need to provide plain English answer, mention tool used.",
+    "content": "The average revenue per row is **$273.34**.\n\n*This figure comes from running an average aggregation on the `revenue` column (tool: `run_query`).*",
+    "reasoning": "We have the answer: average revenue per row is 273.34. Need to state tool results used.",
     "role": "assistant"
    },
    "usage": {
-    "completion_time": 0.086327106,
-    "completion_tokens": 77,
+    "completion_time": 0.072625516,
+    "completion_tokens": 69,
     "completion_tokens_details": {
-     "reasoning_tokens": 27
+     "reasoning_tokens": 23
     },
-    "prompt_time": 0.083430299,
-    "prompt_tokens": 1239,
-    "queue_time": 0.085665797,
-    "total_time": 0.169757405,
-    "total_tokens": 1316
+    "prompt_time": 0.193297258,
+    "prompt_tokens": 1384,
+    "prompt_tokens_details": {
+     "cached_tokens": 1024
+    },
+    "queue_time": 0.234989076,
+    "total_time": 0.265922774,
+    "total_tokens": 1453
    }
   }
  ],
  "case_id": "ro-mean-revenue",
  "model": "openai/gpt-oss-20b",
  "prompt_hash": "5ed8b07eb90f50fa",
- "recorded_at": "2026-10-11T13:00:13+00:00",
+ "recorded_at": "2026-10-12T19:07:17+00:00",
  "repeat": 1,
- "tools_hash": "478141d0dfdcea89"
+ "tools_hash": "102ccb8c19914400"
 }

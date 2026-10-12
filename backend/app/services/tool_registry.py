@@ -54,6 +54,7 @@ from .profiling_service import (
     profile_column,
     profile_dataframe,
     profiling_service,
+    recommend_targets,
 )
 
 logger = get_logger("insightflow.agent.tools")
@@ -194,6 +195,12 @@ class RunQueryArgs(_Args):
     )
 
 
+class RecommendTargetsArgs(_Args):
+    limit: int = Field(
+        default=3, ge=1, le=10, description="How many candidate targets to return."
+    )
+
+
 class TrainModelArgs(_Args):
     target_column: str | None = Field(
         default=None,
@@ -281,6 +288,14 @@ def _run_query(ctx: ToolContext, args: RunQueryArgs) -> Any:
 
 def _recommend_cleaning(ctx: ToolContext, _args: NoArgs) -> Any:
     return cleaning_service.recommend_config(ctx.frame(prefer="original"))
+
+
+def _recommend_targets(ctx: ToolContext, args: RecommendTargetsArgs) -> Any:
+    return {"candidates": recommend_targets(ctx.frame(), limit=args.limit)}
+
+
+def _auto_dashboard(ctx: ToolContext, _args: NoArgs) -> Any:
+    return analytics_service.auto_dashboard(ctx.frame())
 
 
 def _model_results(ctx: ToolContext, _args: NoArgs) -> Any:
@@ -461,6 +476,29 @@ TOOLS: tuple[Tool, ...] = (
         ),
         args_model=NoArgs,
         handler=_recommend_cleaning,
+        read_only=True,
+    ),
+    Tool(
+        name="recommend_targets",
+        description=(
+            "Rank which columns would make sensible prediction targets, with the "
+            "reasoning behind each one. Use this before train_model when the user "
+            "has not named a target column."
+        ),
+        args_model=RecommendTargetsArgs,
+        handler=_recommend_targets,
+        read_only=True,
+    ),
+    Tool(
+        name="auto_dashboard",
+        description=(
+            "Get the automatically chosen KPIs, time series, category breakdown "
+            "and histogram for this dataset, the same view the dashboard page "
+            "shows. Use this for a general 'show me an overview' request rather "
+            "than a specific aggregation, which run_query answers."
+        ),
+        args_model=NoArgs,
+        handler=_auto_dashboard,
         read_only=True,
     ),
     Tool(

@@ -85,9 +85,9 @@ def action_ctx(uploaded):
 # ----------------------------------------------------------------- schemas
 
 
-def test_eleven_tools_are_registered():
-    assert len(TOOLS) == 11
-    assert len([t for t in TOOLS if t.read_only]) == 9
+def test_thirteen_tools_are_registered():
+    assert len(TOOLS) == 13
+    assert len([t for t in TOOLS if t.read_only]) == 11
     assert sorted(t.name for t in TOOLS if not t.read_only) == [
         "apply_cleaning",
         "train_model",
@@ -98,7 +98,7 @@ def test_action_tools_are_omitted_when_actions_are_not_allowed():
     names = {t.name for t in tools_for(allow_actions=False)}
     assert "apply_cleaning" not in names
     assert "train_model" not in names
-    assert len(names) == 9
+    assert len(names) == 11
 
     allowed = {t.name for t in tools_for(allow_actions=True)}
     assert "apply_cleaning" in allowed and "train_model" in allowed
@@ -106,7 +106,7 @@ def test_action_tools_are_omitted_when_actions_are_not_allowed():
 
 def test_schema_is_shaped_for_the_provider():
     schema = tools_schema(allow_actions=True)
-    assert len(schema) == 11
+    assert len(schema) == 13
     entry = next(s for s in schema if s["function"]["name"] == "run_query")
 
     assert entry["type"] == "function"
@@ -267,6 +267,46 @@ def test_explain_without_a_model_is_an_actionable_error(ctx):
 
     assert outcome.status == STATUS_TOOL_ERROR
     assert outcome.error_code == "no_trained_model"
+
+
+def test_recommend_targets_ranks_candidates_with_a_reason(ctx):
+    outcome = execute_tool(ctx, "recommend_targets", {})
+
+    assert outcome.status == STATUS_OK
+    candidates = outcome.value["candidates"]
+    assert candidates
+    assert "revenue" in {c["column"] for c in candidates}
+    assert all("reason" in c for c in candidates)
+
+
+def test_recommend_targets_limit_is_bounded(ctx):
+    outcome = execute_tool(ctx, "recommend_targets", {"limit": 1})
+    assert outcome.status == STATUS_OK
+    assert len(outcome.value["candidates"]) <= 1
+
+    outcome = execute_tool(ctx, "recommend_targets", {"limit": 0})
+    assert outcome.status == STATUS_INVALID_ARGUMENTS
+
+    outcome = execute_tool(ctx, "recommend_targets", {"limit": 500})
+    assert outcome.status == STATUS_INVALID_ARGUMENTS
+
+
+def test_auto_dashboard_is_read_only_and_matches_the_dashboard_shape(ctx):
+    outcome = execute_tool(ctx, "auto_dashboard", {})
+
+    assert outcome.status == STATUS_OK
+    assert set(outcome.value) == {
+        "kpis",
+        "target_column",
+        "date_column",
+        "category_column",
+        "time_series",
+        "category_breakdown",
+        "histogram",
+        "available",
+        "insights",
+    }
+    assert ctx.dataset.cleaned_path is None
 
 
 # --------------------------------------------------------------- action tools

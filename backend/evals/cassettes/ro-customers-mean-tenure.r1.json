@@ -2,10 +2,10 @@
  "calls": [
   {
    "finish_reason": "tool_calls",
-   "key": "4ef22c42d9c3fefebe28897ecd391abca4220354722802d893f9a8ebcd1bae44",
-   "latency_s": 0.378,
+   "key": "e3d222e8fe894c82c599c02681c4592b5a98577370a9e7b50a7918d9369b700c",
+   "latency_s": 0.357,
    "message": {
-    "reasoning": "We need average tenure in months. Likely a column named \"tenure_months\" or similar. Let's first list columns.",
+    "reasoning": "We need average tenure in months. Likely column \"tenure_months\" or similar. We need to profile column. Let's list columns.",
     "role": "assistant",
     "tool_calls": [
      {
@@ -13,33 +13,33 @@
        "arguments": "{}",
        "name": "list_columns"
       },
-      "id": "fc_b5bd2cdc-e3a2-4515-9e5b-345879dbb406",
+      "id": "fc_2438655f-6172-4b1b-ab53-4a972956c4fb",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.051572261,
-    "completion_tokens": 49,
+    "completion_time": 0.053657031,
+    "completion_tokens": 52,
     "completion_tokens_details": {
-     "reasoning_tokens": 27
+     "reasoning_tokens": 30
     },
-    "prompt_time": 0.016037465,
-    "prompt_tokens": 985,
+    "prompt_time": 0.008782064,
+    "prompt_tokens": 1130,
     "prompt_tokens_details": {
-     "cached_tokens": 768
+     "cached_tokens": 1024
     },
-    "queue_time": 0.072311356,
-    "total_time": 0.067609726,
-    "total_tokens": 1034
+    "queue_time": 0.064762637,
+    "total_time": 0.062439095,
+    "total_tokens": 1182
    }
   },
   {
    "finish_reason": "tool_calls",
-   "key": "666d9d5ba8f9c4246b78a9e887014552dd944a122dfcec5bcc2cb409da6c2bc8",
-   "latency_s": 0.678,
+   "key": "248a928988c597649eba5769c7e68207b8553a39a050d6cbc3fcdc3ddae36716",
+   "latency_s": 0.8,
    "message": {
-    "reasoning": "We need average tenure in months. Column is tenure_months. Use run_query aggregation avg measure tenure_months.",
+    "reasoning": "We need average tenure in months. Column \"tenure_months\". Use run_query aggregation avg.",
     "role": "assistant",
     "tool_calls": [
      {
@@ -47,57 +47,51 @@
        "arguments": "{\"aggregation\":\"avg\",\"chart_type\":\"kpi\",\"measure\":\"tenure_months\"}",
        "name": "run_query"
       },
-      "id": "fc_75baae33-be43-4dc4-aabf-84e65c427532",
+      "id": "fc_672f89a3-c7c3-4ccf-b244-948b1e7c8225",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.061529478,
-    "completion_tokens": 60,
+    "completion_time": 0.060059083,
+    "completion_tokens": 57,
     "completion_tokens_details": {
-     "reasoning_tokens": 24
+     "reasoning_tokens": 21
     },
-    "prompt_time": 0.290088948,
-    "prompt_tokens": 1149,
-    "prompt_tokens_details": {
-     "cached_tokens": 768
-    },
-    "queue_time": 0.074559669,
-    "total_time": 0.351618426,
-    "total_tokens": 1209
+    "prompt_time": 0.07502383,
+    "prompt_tokens": 1294,
+    "queue_time": 0.082291421,
+    "total_time": 0.135082913,
+    "total_tokens": 1351
    }
   },
   {
    "finish_reason": "stop",
-   "key": "0cbea72d68be04276e15c2e3a7526a74c1c664faef29a94afc840559f05dc539",
-   "latency_s": 0.884,
+   "key": "5be6b79c87d88bafef014fa10a5c1edaf3d0b146cfeda4d75cfc4cb8db14013c",
+   "latency_s": 0.542,
    "message": {
     "content": "The average tenure of customers in the dataset is **27.5 months** (rounded to one decimal place). This figure comes from aggregating the `tenure_months` column across all 40 records.",
-    "reasoning": "We have the average tenure in months: 27.52. Provide answer.",
+    "reasoning": "We have the average tenure months: 27.52. Provide answer.",
     "role": "assistant"
    },
    "usage": {
-    "completion_time": 0.075183974,
-    "completion_tokens": 69,
+    "completion_time": 0.069259339,
+    "completion_tokens": 68,
     "completion_tokens_details": {
-     "reasoning_tokens": 17
+     "reasoning_tokens": 16
     },
-    "prompt_time": 0.037732794,
-    "prompt_tokens": 1262,
-    "prompt_tokens_details": {
-     "cached_tokens": 768
-    },
-    "queue_time": 0.24233716,
-    "total_time": 0.112916768,
-    "total_tokens": 1331
+    "prompt_time": 0.089759488,
+    "prompt_tokens": 1407,
+    "queue_time": 0.148249916,
+    "total_time": 0.159018827,
+    "total_tokens": 1475
    }
   }
  ],
  "case_id": "ro-customers-mean-tenure",
  "model": "openai/gpt-oss-20b",
  "prompt_hash": "5ed8b07eb90f50fa",
- "recorded_at": "2026-10-11T13:04:19+00:00",
+ "recorded_at": "2026-10-12T19:13:22+00:00",
  "repeat": 1,
- "tools_hash": "478141d0dfdcea89"
+ "tools_hash": "102ccb8c19914400"
 }

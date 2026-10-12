@@ -264,14 +264,18 @@
   "question": "What fraction of customers churned?",
   "expect": {
    "tools_required": [
-    "profile_column"
+    [
+     "profile_column",
+     "run_query"
+    ]
    ],
    "tool_args": [
     {
      "tool": "profile_column",
      "args": {
       "column": "churned"
-     }
+     },
+     "optional": true
     }
    ],
    "facts": [

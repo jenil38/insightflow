@@ -2,8 +2,8 @@
  "calls": [
   {
    "finish_reason": "tool_calls",
-   "key": "1586ff2ea07c01f04de61a2e4911c8df85346b8216b5c8d1e890622742f0aab4",
-   "latency_s": 0.418,
+   "key": "a8d7fb12e09ca8d14fa281b3455996436819810c38956da43063d2669255dee4",
+   "latency_s": 0.942,
    "message": {
     "reasoning": "We need to get dataset overview.",
     "role": "assistant",
@@ -13,51 +13,51 @@
        "arguments": "{}",
        "name": "get_dataset_overview"
       },
-      "id": "fc_0333032a-c369-41a1-b15a-894fa7965a51",
+      "id": "fc_1150ddb9-3da4-49c1-84ee-89950635732e",
       "type": "function"
      }
     ]
    },
    "usage": {
-    "completion_time": 0.033226919,
+    "completion_time": 0.033854367,
     "completion_tokens": 32,
     "completion_tokens_details": {
      "reasoning_tokens": 8
     },
-    "prompt_time": 0.05668019,
-    "prompt_tokens": 1112,
-    "queue_time": 0.082018313,
-    "total_time": 0.089907109,
-    "total_tokens": 1144
+    "prompt_time": 0.103282876,
+    "prompt_tokens": 1257,
+    "queue_time": 0.151311746,
+    "total_time": 0.137137243,
+    "total_tokens": 1289
    }
   },
   {
    "finish_reason": "stop",
-   "key": "6d010e0ca86499c06823a3836175396cba4b0b4c49f7094f6c5e062f3f71f6d0",
-   "latency_s": 1.068,
+   "key": "a746a2c06dc65206bc32636d8a25682654120d5314ddf9e958333660cfc391ae",
+   "latency_s": 0.527,
    "message": {
     "content": "The dataset contains **30 rows**.",
-    "reasoning": "We have dataset overview: rows 30. The question: \"How many rows are there?\" So answer: 30 rows. Use tool result.",
+    "reasoning": "We have dataset overview: rows 30. So answer: 30 rows.",
     "role": "assistant"
    },
    "usage": {
-    "completion_time": 0.051110452,
-    "completion_tokens": 48,
+    "completion_time": 0.037200388,
+    "completion_tokens": 34,
     "completion_tokens_details": {
-     "reasoning_tokens": 31
+     "reasoning_tokens": 17
     },
-    "prompt_time": 0.087364623,
-    "prompt_tokens": 1551,
-    "queue_time": 0.242985562,
-    "total_time": 0.138475075,
-    "total_tokens": 1599
+    "prompt_time": 0.151750509,
+    "prompt_tokens": 1696,
+    "queue_time": 0.059464887,
+    "total_time": 0.188950897,
+    "total_tokens": 1730
    }
   }
  ],
  "case_id": "act-on-readonly-question",
  "model": "openai/gpt-oss-20b",
  "prompt_hash": "5ed8b07eb90f50fa",
- "recorded_at": "2026-10-11T12:50:00+00:00",
+ "recorded_at": "2026-10-12T18:55:01+00:00",
  "repeat": 1,
- "tools_hash": "478141d0dfdcea89"
+ "tools_hash": "102ccb8c19914400"
 }
