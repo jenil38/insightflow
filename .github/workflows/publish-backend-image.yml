@@ -1,0 +1,33 @@
+name: Publish backend image
+
+# Builds the backend image and publishes it to GitHub Container Registry so it
+# can be imported into Azure Container Registry with `az acr import`. Needed on
+# subscriptions where ACR Tasks (`az acr build`) is blocked.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/jenil38/insightflow-backend:latest

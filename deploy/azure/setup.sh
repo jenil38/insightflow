@@ -60,6 +60,7 @@ GROQ_API_KEY="${GROQ_API_KEY:-}"
 # just re-confirms an already-registered provider.
 echo "Checking the containerapp CLI extension and resource providers..."
 az extension add --name containerapp --upgrade --output none
+az provider register --namespace Microsoft.ContainerRegistry --wait
 az provider register --namespace Microsoft.App --wait
 az provider register --namespace Microsoft.OperationalInsights --wait
 az provider register --namespace Microsoft.DBforPostgreSQL --wait
@@ -99,13 +100,25 @@ ACR_LOGIN_SERVER="$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_G
 
 # ACR Tasks builds in the cloud, so this needs no local Docker install and
 # matches exactly how the GitHub Actions workflow builds later on.
-echo "Building the backend image (this can take a few minutes the first time)..."
-az acr build \
-  --registry "$ACR_NAME" \
-  --image "$IMAGE_NAME:$IMAGE_TAG" \
-  --file backend/Dockerfile \
-  "$SCRIPT_DIR/../../backend" \
-  --output none
+if [ -n "${IMAGE_SOURCE:-}" ]; then
+  # Subscriptions that block ACR Tasks (e.g. Azure for Students) cannot use
+  # az acr build, so import an image that CI already built and published.
+  echo "Importing $IMAGE_SOURCE into $ACR_NAME..."
+  az acr import \
+    --name "$ACR_NAME" \
+    --source "$IMAGE_SOURCE" \
+    --image "$IMAGE_NAME:$IMAGE_TAG" \
+    --force \
+    --output none
+else
+  echo "Building the backend image (this can take a few minutes the first time)..."
+  az acr build \
+    --registry "$ACR_NAME" \
+    --image "$IMAGE_NAME:$IMAGE_TAG" \
+    --file backend/Dockerfile \
+    "$SCRIPT_DIR/../../backend" \
+    --output none
+fi
 
 # ------------------------------------------------------ Container Apps env
 
