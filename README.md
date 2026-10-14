@@ -161,6 +161,45 @@ python -m evals rescore evals/results/<run>.json                # re-apply score
 - **Not measured:** whether free-text answers are faithful or good. There is no judge
   model; a passing run can still contain a poor answer.
 
+## MCP server
+
+`backend/mcp_server.py` exposes the same 13 tools the chat agent uses (11 read-only,
+2 action) to any MCP client - Claude Desktop, an IDE - over stdio, so it can analyse an
+InsightFlow dataset directly. It is a thin adapter: every tool calls
+`app.services.tool_registry.execute_tool`, the same function the agent calls, so
+behaviour and argument validation are defined once, in the registry.
+
+It runs locally against your own InsightFlow database (whatever `DATABASE_URL` your
+environment or `.env` already has) and acts as one user, named by `INSIGHTFLOW_USER_ID`.
+A dataset id you do not own is refused the same way the REST API refuses it.
+`apply_cleaning` and `train_model` are never executed from here: both return a
+`pending_confirmation` payload describing what calling them for real would do, the
+same approval gate the chat agent's confirmation card uses. To actually run one,
+approve it in the agent chat or use the dataset's cleaning/training endpoint.
+
+```bash
+# from the repository root, not from backend/ - the module path is backend.mcp_server
+INSIGHTFLOW_USER_ID=1 python -m backend.mcp_server
+```
+
+Example `claude_desktop_config.json` entry:
+
+```json
+{
+  "mcpServers": {
+    "insightflow": {
+      "command": "python",
+      "args": ["-m", "backend.mcp_server"],
+      "cwd": "/absolute/path/to/insightflow",
+      "env": {
+        "INSIGHTFLOW_USER_ID": "1",
+        "DATABASE_URL": "sqlite:///./insightflow.db"
+      }
+    }
+  }
+}
+```
+
 ## License
 
 MIT
