@@ -1,0 +1,5 @@
+# Shell scripts must stay LF regardless of the checkout platform's git
+# config - deploy/azure/*.sh run on Linux (GitHub Actions) and in bash on any
+# OS; a CRLF line ending turns the shebang and every line into a syntax
+# error on Linux (`$'\r': command not found`).
+*.sh text eol=lf

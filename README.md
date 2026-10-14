@@ -199,6 +199,13 @@ Example `claude_desktop_config.json` entry:
   }
 }
 ```
+## Deploying to Azure
+
+The backend can run on Azure Container Apps (Consumption plan, scale to
+zero) with PostgreSQL Flexible Server, deployed via a manual-only GitHub
+Actions workflow using OIDC (no stored Azure password). See
+[`docs/DEPLOY_AZURE.md`](docs/DEPLOY_AZURE.md) for the full walkthrough,
+including cost and teardown.
 
 ## License
 
