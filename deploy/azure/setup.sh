@@ -145,7 +145,7 @@ if ! az postgres flexible-server show --name "$POSTGRES_SERVER_NAME" --resource-
   az postgres flexible-server create \
     --name "$POSTGRES_SERVER_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --location "$LOCATION" \
+    --location "${POSTGRES_LOCATION:-$LOCATION}" \
     --admin-user "$POSTGRES_ADMIN_USER" \
     --admin-password "$POSTGRES_ADMIN_PASSWORD" \
     --sku-name Standard_B1ms \
@@ -164,7 +164,7 @@ if ! az postgres flexible-server db show --server-name "$POSTGRES_SERVER_NAME" -
   az postgres flexible-server db create \
     --server-name "$POSTGRES_SERVER_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --database-name "$POSTGRES_DB_NAME" \
+    --name "$POSTGRES_DB_NAME" \
     --output none
 else
   echo "Database $POSTGRES_DB_NAME already exists, skipping."
@@ -177,6 +177,11 @@ DATABASE_URL="postgresql+psycopg2://${POSTGRES_ADMIN_USER}:${POSTGRES_ADMIN_PASS
 
 if ! az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "Creating container app $CONTAINER_APP_NAME..."
+  # Express environments do not support managed-identity registry pulls, so
+  # this uses the registry admin login instead.
+  az acr update --name "$ACR_NAME" --admin-enabled true --output none
+  ACR_USERNAME="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
+  ACR_PASSWORD="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
   az containerapp create \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
@@ -189,7 +194,8 @@ if ! az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOUR
     --cpu 0.5 \
     --memory 1.0Gi \
     --registry-server "$ACR_LOGIN_SERVER" \
-    --registry-identity system \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
     --secrets \
       "database-url=$DATABASE_URL" \
       "jwt-secret=$JWT_SECRET" \
